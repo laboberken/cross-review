@@ -1,26 +1,17 @@
 # cross-review
 
-面向编码 agent 的**评审工具箱**:两个 skill,把「代码评审」从**模型给自己打分**变成
+面向编码 agent 的评审工具箱:一个 skill,把「代码评审」从**模型给自己打分**变成
 **换一个模型来审**。
 
-| Skill | 作用 |
-|---|---|
-| [`cross-review`](skills/cross-review/SKILL.md) | **编排层**。写下改动的意图,把不同模型家系的独立评审者作为并行 pane 派到同一个 Herdr tab,逐条裁决,修完只对增量复审。 |
-| [`review-agent`](skills/review-agent/SKILL.md) | **契约层**。只读、缺陷优先的 finding 格式 —— P0–P3 分级、`No findings.` 哨兵,以及禁止评审者编造证据的那几条硬规矩。 |
+[`cross-review`](skills/cross-review/SKILL.md) 写下改动的意图,把不同模型家系的独立
+评审者作为并行 pane 派到同一个 Herdr tab,逐条裁决,修完只对增量复审。它要求评审者
+遵守的 finding 契约 —— P0–P3 分级、`No findings.` 哨兵,以及禁止评审者编造证据的
+那几条硬规矩 —— 就在它旁边:
+[`references/finding-format.md`](skills/cross-review/references/finding-format.md)。
 
-两者是组合关系:`cross-review` 跑评审团,`review-agent` 给评审团一套**共同语言**,
-让两个厂商的报告能逐行比对。
-
-## 为什么拆成两个 skill
-
-因为它们回答的是不同的问题,而且各自独立有用。
-
-`cross-review` 需要 herdr-core、一个 git 仓库、以及至少一个别的 agent CLI。
-`review-agent` 什么都不需要 —— 它只是一份评审契约,没有评审团也能改善任何一次评审。
-**Codex 本身就内置了它。**
-
-如果合成一个,`review-agent` 就永远无法单独安装,而「共享契约」这个想法会退化成
-「某个 skill 的内部细节」。
+> **从 v2 升级。** 以前有第二个 skill `review-agent` 承载契约,现在已删除:重新安装
+> 本仓库,并卸载你从本仓库装过的 `review-agent`。Codex 自己内置的那个 `review-agent`
+> 是另一回事,不要动它。
 
 ## 为什么要跨模型
 
@@ -46,13 +37,6 @@
 
 ```bash
 npx skills add https://github.com/laboberken/cross-review
-```
-
-按名字只装一个:
-
-```bash
-npx skills add https://github.com/laboberken/cross-review@cross-review
-npx skills add https://github.com/laboberken/cross-review@review-agent
 ```
 
 或者手动装。Claude Code 原生读 `~/.claude/skills`;opencode 把它当兼容性源读;
@@ -185,8 +169,6 @@ skill **绝不**关闭、kill 或删除评审者的终端和 tab —— 留给�
 │   │   ├── templates/               # herdr-core 评审者模板
 │   │   ├── examples/                # 实测会话记录
 │   │   └── scripts/                 # 安装与镜像脚本
-│   └── review-agent/
-│       └── SKILL.md                 # name: review-agent
 ├── .github/workflows/validate.yml
 ├── LICENSE
 └── README.md

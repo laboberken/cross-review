@@ -1,28 +1,20 @@
 # cross-review
 
-A review toolkit for coding agents: **two skills** that make code review a
+A review toolkit for coding agents: one skill that makes code review a
 cross-model exercise instead of a model grading its own homework.
 
-| Skill | What it does |
-|---|---|
-| [`cross-review`](skills/cross-review/SKILL.md) | The orchestration skill. States the change's intent, dispatches independent reviewer agents on different model families as parallel panes in one Herdr tab, rules on each finding, then fixes and re-reviews only the delta. |
-| [`review-agent`](skills/review-agent/SKILL.md) | The finding contract. A read-only, defect-first review format — P0–P3 severities, a `No findings.` sentinel, and the rules that stop a reviewer from inventing its own evidence. |
+[`cross-review`](skills/cross-review/SKILL.md) states the change's intent,
+dispatches independent reviewer agents on different model families as parallel
+panes in one Herdr tab, rules on each finding, then fixes and re-reviews only
+the delta. The finding contract it holds its reviewers to — P0–P3 severities,
+a `No findings.` sentinel, and the rules that stop a reviewer from inventing
+its own evidence — lives beside it as
+[`references/finding-format.md`](skills/cross-review/references/finding-format.md).
 
-They compose: `cross-review` runs the panel, `review-agent` gives the panel a
-common language so two vendors' reports can be compared line by line.
-
-## Why two skills instead of one
-
-Because they answer different questions and are useful apart.
-
-`cross-review` needs herdr-core, a git repository, and at least one other
-agent CLI. `review-agent` needs nothing but an agent — it is a review
-contract, and it improves any review, with or without a panel. Codex even
-ships it built in.
-
-Bundling them would have meant `review-agent` could never be installed on its
-own, and the shared-contract idea would collapse into "one skill's internal
-detail".
+> **Upgrading from v2.** There used to be a second skill, `review-agent`, that
+> held the contract. It is gone: install this repository again, and remove any
+> `review-agent` you installed from it. Codex's own built-in `review-agent` is
+> a different thing and should be left alone.
 
 ## Why cross-model review
 
@@ -50,13 +42,6 @@ Install everything in the toolkit:
 
 ```bash
 npx skills add https://github.com/laboberken/cross-review
-```
-
-Install one skill by name:
-
-```bash
-npx skills add https://github.com/laboberken/cross-review@cross-review
-npx skills add https://github.com/laboberken/cross-review@review-agent
 ```
 
 `npx` puts the skills under `~/.agents/skills/` and links them into each agent
@@ -224,6 +209,7 @@ user closes them, so the transcript stays readable.
 │   │   ├── SKILL.md                 # name: cross-review
 │   │   ├── references/
 │   │   │   ├── axes.md              # Correctness / Spec / Standards + smells
+│   │   │   ├── finding-format.md    # the contract every reviewer reports in
 │   │   │   ├── lenses.md            # Skeptic / Architect / Minimalist
 │   │   │   ├── spec-sources.md      # the six-step spec ladder
 │   │   │   ├── agents.md            # agent registry, friction, print modes
@@ -232,9 +218,7 @@ user closes them, so the transcript stays readable.
 │   │   ├── commands/cross-review.md # slash command
 │   │   ├── templates/               # herdr-core reviewer templates
 │   │   ├── examples/                # measured sessions
-│   │   └── scripts/                 # install and mirror helpers
-│   └── review-agent/
-│       └── SKILL.md                 # name: review-agent
+│   │   └── scripts/                 # install, verify, scaffold, mirror
 ├── docs/
 │   ├── design.md                    # D1-D19: why the toolkit is shaped this way
 │   └── agents/                      # tracker, triage labels, domain layout
