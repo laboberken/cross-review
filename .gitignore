@@ -13,5 +13,8 @@ Thumbs.db
 # Logs
 *.log
 
-# Local review artefacts
-.review/
+# Local tracker and scratch fixtures
+.scratch/
+
+# Python bytecode from fixtures
+__pycache__/
