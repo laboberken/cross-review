@@ -37,6 +37,25 @@ central insight of v2: a transport cost must not present as a protocol defect.
 6. Depend on no engineering workflow. Matt's `docs/agents/` is one candidate
    among several.
 
+## Decision index
+
+Every implementation decision in the spec, and where it is recorded here.
+
+| Spec decision | Here |
+|---|---|
+| Skill set topology | D1 |
+| Axes and lenses are orthogonal, assigned as pairs | D2, D3 |
+| Report shape | D5 |
+| Findings: dedup and adjudication | D6, D7 |
+| Baseline and artefacts | D8, D9, D10 |
+| Spec source discovery | D11 |
+| Transport ladder | D12, D13, D14 |
+| Cost and scheduling | D15 |
+| Stop condition | D16 |
+| Contract change | D17 |
+| Registry friction | D18 |
+| Workflow independence | D19 |
+
 ## Decisions
 
 ### D1 — Keep two skills; change them in place
