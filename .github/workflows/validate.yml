@@ -49,24 +49,11 @@ jobs:
           set -e
           f=skills/cross-review/SKILL.md
           grep -q 'Spec axis: NOT RUN' skills/cross-review/references/spec-sources.md
-          # All twelve smells must be present. Listed one per line so a
-          # missing entry fails the build rather than being swallowed.
-          while IFS= read -r s; do
+          # All twelve smells must be present. One line, no continuations:
+          # a line at column 0 would terminate this block scalar.
+          for s in 'Mysterious Name' 'Duplicated Code' 'Feature Envy' 'Data Clumps' 'Primitive Obsession' 'Repeated Switches' 'Shotgun Surgery' 'Divergent Change' 'Speculative Generality' 'Message Chains' 'Middle Man' 'Refused Bequest'; do
             grep -q "$s" skills/cross-review/references/axes.md
-          done <<'SMELLS'
-Mysterious Name
-Duplicated Code
-Feature Envy
-Data Clumps
-Primitive Obsession
-Repeated Switches
-Shotgun Surgery
-Divergent Change
-Speculative Generality
-Message Chains
-Middle Man
-Refused Bequest
-SMELLS
+          done
           # The two binding rules must both be stated.
           grep -qi 'repo overrides' skills/cross-review/references/axes.md
           grep -qi 'judgement call' skills/cross-review/references/axes.md
