@@ -30,6 +30,12 @@
 三个 agent 都能装:
 
 ```bash
+npx skills add https://github.com/laboberken/cross-review
+```
+
+或者克隆:
+
+```bash
 git clone https://github.com/laboberken/cross-review.git
 cd cross-review
 ```

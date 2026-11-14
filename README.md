@@ -40,6 +40,12 @@ This skill encodes the parts that hold up:
 Install as a global skill, from any of the three agents:
 
 ```bash
+npx skills add https://github.com/laboberken/cross-review
+```
+
+Or clone it:
+
+```bash
 git clone https://github.com/laboberken/cross-review.git
 cd cross-review
 ```
