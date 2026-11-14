@@ -98,6 +98,77 @@ jobs:
             bash -n "$f"
           done
 
+      - name: Installer probes the directory hc actually reads
+        run: |
+          set -e
+          s=skills/cross-review/scripts/install-templates.sh
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          mkdir -p "$tmp/appdata/herdr-core" "$tmp/xdg/herdr-core" "$tmp/home"
+
+          # Windows-shaped: APPDATA wins over a stale ~/.config.
+          got=$(APPDATA="$tmp/appdata" HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/xdg" \
+                sh "$s" --dry-run | sed -n 's/^target: //p')
+          case "$got" in
+            "$tmp"/appdata/herdr-core/templates) ;;
+            *) echo "expected the APPDATA path, got: $got" >&2; exit 1 ;;
+          esac
+
+          # Unix-shaped: XDG wins when it exists.
+          got=$(env -u APPDATA HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/xdg" \
+                sh "$s" --dry-run | sed -n 's/^target: //p')
+          case "$got" in
+            "$tmp"/xdg/herdr-core/templates) ;;
+            *) echo "expected the XDG path, got: $got" >&2; exit 1 ;;
+          esac
+
+          # Nothing exists: fall back to $HOME/.config, never to a bare /herdr-core.
+          got=$(env -u APPDATA -u XDG_CONFIG_HOME HOME="$tmp/home" \
+                sh "$s" --dry-run | sed -n 's/^target: //p')
+          [ "$got" = "$tmp/home/.config/herdr-core/templates" ] || {
+            echo "expected the ~/.config fallback, got: $got" >&2; exit 1; }
+
+          # --dry-run must not write anything.
+          [ ! -d "$tmp/home/.config" ] || {
+            echo "--dry-run created $tmp/home/.config" >&2; exit 1; }
+
+      - name: check-templates.sh detects drift and absence
+        run: |
+          set -e
+          c=skills/cross-review/scripts/check-templates.sh
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+
+          # Build a listing that matches what the skill ships, read from the
+          # templates' own frontmatter so this test cannot drift out of step.
+          # jq only: a heredoc terminator would have to sit at column 0, which
+          # terminates this block scalar.
+          entries='[]'
+          for tpl in skills/cross-review/templates/*.md; do
+            name=$(basename "$tpl" .md)
+            cmd=$(sed -n '/^---$/,/^---$/p' "$tpl" | sed -n 's/^command: //p')
+            desc=$(sed -n '/^---$/,/^---$/p' "$tpl" | sed -n 's/^description: //p')
+            entries=$(jq --arg n "$name" --arg c "$cmd" --arg d "$desc" \
+              '. + [{"name":$n,"command":$c,"description":$d}]' <<<"$entries")
+          done
+          jq -n --argjson e "$entries" '{"templates":$e}' > "$tmp/good.json"
+
+          jq '.templates[0].command += " --drifted"' "$tmp/good.json" > "$tmp/drift.json"
+          jq '.templates |= .[1:]' "$tmp/good.json" > "$tmp/missing.json"
+
+          jq -e '.templates | length > 0' "$tmp/good.json" > /dev/null
+
+          sh "$c" "$tmp/good.json"
+          if sh "$c" "$tmp/drift.json"; then echo "drift was not detected" >&2; exit 1; fi
+          if sh "$c" "$tmp/missing.json"; then echo "absence was not detected" >&2; exit 1; fi
+
+      - name: README points at the directory npx installs to
+        run: |
+          set -e
+          ! grep -q '\.claude/skills/cross-review/scripts' README.md
+          grep -q 'npx skills add' README.md
+          grep -qi 'does not install\|not install the\|templates are separate\|second step' README.md
+
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v19
         with:
