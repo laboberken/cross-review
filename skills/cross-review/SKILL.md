@@ -90,6 +90,17 @@ independent reviewers both cited a rule while neither noticed the file
 contradicted itself. If the rules conflict, stop and tell the user; do not
 dispatch a review against broken rules.
 
+**Check the spec against the rules too.** A rule in `AGENTS.md` and a
+requirement in the spec can contradict each other, and that contradiction makes
+part of the review untestable. Measured in the same run as the entry above: a
+project rule said amounts are integer cents, while its spec required refunds
+rounded up "to the nearest cent" to avoid losing "up to half a cent" — half a
+cent cannot exist under the rule, so the rounding requirement was vacuous and
+the defect in it was invisible to any test written from the rule alone. Both
+reviewers eventually reported the tension, but it framed their whole report;
+finding it in preflight would have saved a round. Raise it with the user before
+dispatching, and record it in the report either way.
+
 **Test command.** Determine the project's test command and check it actually
 runs — `pytest` is often absent. A reviewer that cannot run tests will report
 unverified claims, and "verified" is the one word that must never be loose.
@@ -257,21 +268,43 @@ instead of the current diff.
 ## 4. Readiness
 
 `hc run` returns `first_message`. **`sent: false` means the task never
-arrived** and the reviewer is not running yet. The usual cause is Claude Code's
-folder-trust dialog on a directory it has not seen.
+arrived** and the reviewer is not running yet. The usual cause is a
+folder-trust dialog on a directory the agent has not seen.
 
 ```sh
 hc read <terminal>          # look at the screen
-hc keys <terminal> down     # move to "Yes, I trust this folder"
-hc keys <terminal> enter
 ```
 
-Then re-dispatch — the trust grant persists:
+Read the screen before pressing anything: the dialog is not the same for every
+agent. Claude Code wants `down` then `enter`; codex shows "Folder access" with
+`1. Trust and continue` already selected, so `enter` alone clears it. Clearing
+the wrong one sends the trust grant nowhere.
+
+```sh
+hc keys <terminal> enter    # codex: the first option is preselected
+hc keys <terminal> down; hc keys <terminal> enter   # Claude Code
+```
+
+Then re-dispatch — the trust grant persists, so the next launch delivers the
+task normally:
 
 ```sh
 hc kill <terminal>; hc rm <terminal>
 hc run --bg --json ... reviewer "<TASK PACKET>"   # sent must be true
 ```
+
+**Readability is not the same as delivery.** A pane can look busy and be doing
+nothing. The check that settles it is the agent's own counters:
+
+```sh
+hc get <terminal>          # title: "Context 0% used | 0 in | 0 out"
+```
+
+Zero tokens after a dispatch means the task is sitting in the input box
+unsubmitted — measured on codex, which pastes without pressing Enter and
+holds at `[Pasted Content N chars]`. Nothing in `hc ls` shows this: the
+terminal reads `live`, `status: working`, and the review looks like it is in
+progress. Check `hc get` after dispatching each reviewer, not `hc ls`.
 
 Never use `hc send --force` to get past a dialog. Read the screen and ask the
 user.

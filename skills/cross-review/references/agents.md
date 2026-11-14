@@ -25,14 +25,17 @@ paste needs a second Enter, so it cannot be waited on by name.
 
 | Agent | Friction | Why |
 |---|---|---|
-| opencode | **low** | reports status, no dialogs, `argv` prompt |
+| opencode | **low** | reports status, no dialogs, `argv` prompt. Measured: two panes dispatched, both ran to a report, **zero keystrokes** |
 | claude | **medium** | reports status, but a folder-trust dialog blocks the first message on an unseen directory |
-| codex | **high** | no status, paste needs a second Enter, so collect by message not by wait |
+| codex | **high** | no status, folder trust **and** an unsubmitted paste. Measured: two panes dispatched, **neither ran** — one held at the trust panel, the other at `[Pasted Content N chars]` with `Context 0% used`. At least one keystroke per pane, and a pane that needs it looks identical to one that is working |
 | others | unknown | try, then record what you measured |
 
-Pick the lowest-friction agent **whose model family differs from yours**. The
-cross-model requirement outranks the friction preference: a low-friction
-same-model reviewer is not a review.
+The friction column is not about preference. A high-friction agent costs a
+human keystroke at exactly the moment nobody is watching, and the failure is
+silent: `hc ls` reports `live`, `status: working`, and only `hc get`'s token
+counter (`0 in | 0 out`) or the screen reveals that nothing was delivered.
+Prefer **lowest friction among agents whose model family differs from yours** —
+cross-model outranks friction, but friction decides the tie.
 
 ## The contract every reviewer must satisfy at L3
 
@@ -134,7 +137,11 @@ back, so the controller reads the findings file after the process exits.
 - **prompt**: `argv`. Verified as the controller side.
 - **status**: reports `app: "opencode"` with `working`/`idle`.
   **Verified**.
-- **dialogs**: none observed.
+- **dialogs**: none observed. Verified on a directory it had never seen: the
+  task was delivered with `first_message.sent: true` and the reviewer ran to a
+  report with no keystroke.
+- **template**: `reviewer-opencode`. Built from `reviewer-codex`'s contract;
+  it submits its own paste, so it needs no follow-up key.
 - **notes**: the binary also emits an OSC title, so the terminal title in the
   Herdr window shows the session title.
 
