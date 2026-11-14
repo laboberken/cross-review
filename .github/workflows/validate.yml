@@ -40,9 +40,26 @@ jobs:
       - name: Check cross-review references
         run: |
           set -e
-          for f in lenses agents task-packet troubleshooting; do
+          for f in lenses axes spec-sources agents task-packet troubleshooting; do
             test -f "skills/cross-review/references/$f.md"
           done
+
+      - name: Check the axes are wired, not just referenced
+        run: |
+          set -e
+          f=skills/cross-review/SKILL.md
+          grep -q 'Spec axis: NOT RUN' skills/cross-review/references/spec-sources.md
+          for s in 'Mysterious Name' 'Duplicated Code' 'Feature Envy' 'Data Clumps'                    'Primitive Obsession' 'Repeated Switches' 'Shotgun Surgery'                    'Divergent Change' 'Speculative Generality' 'Message Chains'                    'Middle Man' 'Refused Bequest'; do
+            grep -q "$s" skills/cross-review/references/axes.md
+          done
+          # The two binding rules must both be stated.
+          grep -qi 'repo overrides' skills/cross-review/references/axes.md
+          grep -qi 'judgement call' skills/cross-review/references/axes.md
+          # Transport ladder and the convergence gate.
+          grep -q 'L3' "$f" && grep -q 'L2' "$f" && grep -q 'L1' "$f"
+          grep -q 'did not converge' "$f"
+          # No workflow-specific directory may be privileged.
+          ! grep -q 'docs/agents/\*\*' skills/cross-review/references/spec-sources.md
 
       - name: Check the review contract's axis/lens header
         run: |

@@ -31,10 +31,35 @@ works, and able to be asked follow-up questions afterwards.
 Read `hc --skill` before your first `hc` command, and `herdr-app --skill`
 before your first `herdr-app` command.
 
-Confirm the runtime: `$HC_TERMINAL_ID` set means herdr-core and this skill
-works normally. `$HERDR_ENV` = 1 with `$HERDR_PANE_ID` means the older Herdr
-TUI — wrong substrate, stop and tell the user. Both set is ambiguous — stop and
-ask.
+**Detect the transport.** The protocol is the same at every rung; only how a
+reviewer process starts changes. Report the rung you picked.
+
+| Rung | Condition | What it is |
+|---|---|---|
+| **L3** | `$HC_TERMINAL_ID` set and `hc templates` lists `reviewer` | Interactive panes. Visible, steerable, askable afterwards. |
+| **L2** | No `HC_TERMINAL_ID`, but a cross-model CLI is installed | Print mode: `codex exec`, `opencode run`, `claude -p`. No panes, no status, no dialogs — and the cheap rung. |
+| **L1** | Neither of the above | A same-harness subagent. Announced as same-family in the report. |
+
+`$HERDR_ENV` = 1 with `$HERDR_PANE_ID` means the older Herdr TUI — wrong
+substrate, stop and tell the user. Both set is ambiguous — stop and ask.
+
+An L1 panel is not a cross-model panel. Say so at the top of the report and in
+the verdict block; a weaker panel that ran is useful only while its weakness
+is visible.
+
+L2's verdict is an exit code, because nothing is watching it:
+
+| Exit | Meaning |
+|---|---|
+| `0` | no accepted finding blocks shipping |
+| `1` | findings present, ruling incomplete — the review did not converge |
+| `2` | an accepted finding blocks shipping |
+
+CI is out of scope. Do not add a workflow file, a `--ci` flag, or a PR-comment
+publisher to this skill. L2 exists because it is the cheap local path, not
+because it is an unattended one.
+
+At L3, run the preflight checks below.
 
 ```sh
 hc templates          # must list "reviewer"
@@ -101,11 +126,19 @@ partial diff while looking correct.
 Never commit to pin a baseline. A review that writes history in order to read
 history has made its own job harder.
 
-## 2. Lenses, and how many
+## 2. Axes, lenses, and how many
 
-Each reviewer adopts one lens exclusively. Lenses are **roles**, not
-dimensions: a Skeptic and an Architect look for different things, not different
-aspects of the same thing.
+Two things are assigned to every reviewer, and they answer different questions.
+
+- An **axis** is what counts as a standard: **Correctness**, **Spec
+  fidelity**, **Coding standards**.
+- A **lens** is how the reviewer challenges: **Skeptic**, **Architect**,
+  **Minimalist**.
+
+A reviewer gets one of each, as a pair — `Skeptic@Correctness`. Never a
+cartesian product: six reviewers cost three times as much to rediscover the
+same defects. Full definitions: `references/axes.md` and
+`references/lenses.md`.
 
 | Lens | Challenges |
 |---|---|
@@ -113,23 +146,55 @@ aspects of the same thing.
 | **Architect** | structural fitness — does the design serve the stated goal, where do the couplings hurt, what breaks first under scale |
 | **Minimalist** | necessity and complexity — what can be deleted, what is being solved prematurely, what is the simplest path |
 
-Full lens definitions and their questions: `references/lenses.md`.
+**Find the spec before choosing pairs.** Work `references/spec-sources.md`. If
+a spec source exists, the Spec axis runs; if not, it does not, and the report
+says `Spec axis: NOT RUN (no spec source)`.
 
-Scale the panel to the change:
+Default pairs — with a spec:
 
-| Change size | Reviewers |
+| Reviewer | Pair |
 |---|---|
-| under 50 lines, 1–2 files | 1 (Skeptic) |
-| 50–200 lines, 3–5 files | 2 (Skeptic + Architect) |
-| 200+ lines or 5+ files | 3 (Skeptic + Architect + Minimalist) |
+| 1 | `Skeptic@Correctness` |
+| 2 | `Spec-Fidelity@Spec` |
+| 3 | `Architect@Standards` |
+
+Without a spec, reviewer 2 becomes `Architect@Standards` and reviewer 3 (large
+panels only) becomes `Minimalist@Correctness`.
+
+**Size the panel by risk, not by line count.** A five-line change to a payment
+path deserves a bigger panel than a two-hundred-line comment sweep.
+
+| Signal | Reviewers |
+|---|---|
+| None of the below | 1 (`Skeptic@Correctness`) |
+| Touches a public API or a shared interface | 2 |
+| Touches money, auth, or permissions paths | 2, minimum |
+| The change accompanies a failing test, or touches a test that guards one of the above | 2 |
+| The user named the area, or asked for a thorough review | 3 |
+| 200+ lines or 5+ files | one more than the signals above suggest |
+
+Line count is a weak secondary signal — use it when nothing else applies.
 
 More reviewers is not automatically better. Two reviewers who disagree is
 signal; three who say the same thing is confirmation.
 
+**Reuse the reviewers between rounds.** At L3 send the next round's packet to
+the same panes with `hc send`; do not kill and respawn them. The process is
+already warm, and the delta is small. At L2 there is no process to keep, so
+pass the previous round's report in the packet instead.
+
+**`--quick`.** One reviewer, `Skeptic@Correctness`, on the cheapest available
+transport. Use it for a small, low-risk change — and only when the risk table
+above has nothing on it.
+
 ## 3. Dispatch
 
-One **tab**, one **pane** per lens, all reviewers in parallel. The tab is the
-dashboard; the panes are the panel.
+At **L3**: one **tab**, one **pane** per reviewer, all reviewers in parallel.
+The tab is the dashboard; the panes are the panel.
+
+At **L2**: no panes. Launch each reviewer with the print-mode command from
+`references/agents.md`, capture its report, and continue. Nothing is visible
+and nothing is steerable, so the packet must stand alone.
 
 ```sh
 # 1. create the tab; it comes with one empty root terminal
@@ -143,7 +208,7 @@ herdr-app do pane.close --pane <root-pane-id>
 hc run --bg --json \
   --label "herdr.space=<space-id>" \
   --label "herdr.tab=<tab-id>" \
-  --name rev-<lens> --cwd "$REPO" reviewer "<TASK PACKET>"
+  --name rev-<axis>-<lens> --cwd "$REPO" reviewer "<TASK PACKET>"
 ```
 
 - `herdr.tab` is what puts a terminal in an **existing** tab as a new pane.
@@ -155,8 +220,8 @@ hc run --bg --json \
   look at.
 
 Build the packet from `references/task-packet.md`. The reviewer brief is the
-lens plus the intent plus the scope. The packet **appends** a delivery clause
-— it never rewrites the brief.
+lens, the axis, the intent, and the scope. The packet **appends** a delivery
+clause — it never rewrites the brief.
 
 **Pick the reviewer from `references/agents.md`.** That registry holds the
 per-agent launch command, how it takes a prompt, whether it reports status,
@@ -301,15 +366,26 @@ Re-reviewing the whole diff every round is wasted work and buries the signal.
 
 ## 8. Gate
 
-Stop when no new finding is accepted and every previous finding is marked
-FIXED. Then report:
+**Convergence ends the review.** A round that accepts no findings stops it —
+there is nothing left for another round to find, and further rounds surface
+stylistic noise rather than new defects.
+
+Report:
 
 ```
 REVIEW PASS — <n> accepted findings across <r> rounds, all fixed.
+Correctness PASS · Standards PASS · Spec PASS (or NOT RUN)
 ```
 
-Cap the loop at **3 rounds**. Past that, further rounds surface stylistic
-noise rather than new defects.
+**The cap is a backstop, not the stopping rule.** It stays at 3 rounds, and
+hitting it is a result you report, never one you pass over:
+
+```
+stopped at hard cap 3, round 3 still yielded <n> accepted findings — review
+did not converge
+```
+
+A capped review is not a passing review. Say which findings were still open.
 
 ## Never
 
