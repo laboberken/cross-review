@@ -89,7 +89,7 @@ unaffordable.
 
 ### D3 — Default pairs depend on whether a spec exists
 
-With a spec: `Skeptic@Correctness`, `Spec-Fidelity@Spec`,
+With a spec: `Skeptic@Correctness`, `Skeptic@Spec`,
 `Architect@Standards`. Without: `Skeptic@Correctness`,
 `Architect@Standards`, Spec axis `NOT RUN`.
 
