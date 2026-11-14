@@ -59,40 +59,65 @@ npx skills add https://github.com/laboberken/cross-review@cross-review
 npx skills add https://github.com/laboberken/cross-review@review-agent
 ```
 
+`npx` puts the skills under `~/.agents/skills/` and links them into each agent
+directory it detects. That is **only the first of two steps**: it installs
+skills, and the reviewer templates described below are not skills, so it does
+**not** install them.
+
+### Second step: the reviewer templates
+
+The templates carry the read-only contract every reviewer runs under, plus each
+agent's launch line. They live in herdr-core's own config directory, which
+`npx` knows nothing about.
+
+```bash
+# macOS / Linux
+sh ~/.agents/skills/cross-review/scripts/install-templates.sh
+```
+
+```powershell
+# Windows
+pwsh -File "$env:USERPROFILE\.agents\skills\cross-review\scripts\install-templates.ps1"
+```
+
+The script probes for the directory `hc` actually reads, copies into it, then
+reads back through `hc templates` and fails if the copies are not visible — a
+template installed where `hc` does not look used to report success and change
+nothing. `--dry-run` prints the paths it would use without writing.
+
+Confirm the result yourself:
+
+```bash
+hc templates     # reviewer's command must say Write(.git/cross-review/**)
+```
+
+If it still says `Write(.review/**)`, you have a template from v1. Reinstall
+with this repository's script; the skill's own preflight will refuse to
+dispatch against a stale contract.
+
 Or install by hand. Claude Code reads `~/.claude/skills` natively; opencode
 reads it as a compatibility source; Codex reads `~/.codex/skills` only, so the
 shared skill directory is mirrored there.
 
 ```bash
 git clone https://github.com/laboberken/cross-review.git
-cp -r cross-review/skills/* ~/.claude/skills/
-sh ~/.claude/skills/cross-review/scripts/sync-codex-skills.sh
+cp -r cross-review/skills/* ~/.agents/skills/
+sh ~/.agents/skills/cross-review/scripts/sync-codex-skills.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
 git clone https://github.com/laboberken/cross-review.git
-Copy-Item cross-review\skills\* "$env:USERPROFILE\.claude\skills\" -Recurse
-pwsh -File "$env:USERPROFILE\.claude\skills\cross-review\scripts\sync-codex-skills.ps1"
-```
-
-Install the herdr-core reviewer templates — these carry the read-only contract
-every reviewer runs under, plus each agent's launch line:
-
-```bash
-sh ~/.claude/skills/cross-review/scripts/install-templates.sh
-```
-
-```powershell
-pwsh -File "$env:USERPROFILE\.claude\skills\cross-review\scripts\install-templates.ps1"
+Copy-Item cross-review\skills\* "$env:USERPROFILE\.agents\skills\" -Recurse
+pwsh -File "$env:USERPROFILE\.agents\skills\cross-review\scripts\sync-codex-skills.ps1"
 ```
 
 Optionally install the slash command:
 
 ```bash
 mkdir -p ~/.config/opencode/commands
-cp ~/.claude/skills/cross-review/commands/cross-review.md ~/.config/opencode/commands/
+cp ~/.agents/skills/cross-review/commands/cross-review.md ~/.config/opencode/commands/
 ```
 
 Restart your agent, or run `/reload`.
