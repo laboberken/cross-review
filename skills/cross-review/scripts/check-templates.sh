@@ -32,10 +32,10 @@ else
     echo "no hc on PATH and no JSON argument given" >&2
     exit 2
   fi
-  json=$(hc templates --json 2>/dev/null) || {
+  if ! json=$(hc templates --json 2>/dev/null); then
     echo "hc templates --json failed" >&2
     exit 2
-  }
+  fi
 fi
 
 # Pull one field for one template out of the listing. A narrow parse: the
@@ -103,13 +103,13 @@ for tpl in "$source_dir"/*.md; do
 done
 
 if [ -n "$missing" ]; then
-  echo "TEMPLATE CHECK FAILED — not installed:$missing" >&2
+  echo "TEMPLATE CHECK FAILED - not installed:$missing" >&2
   echo "  reinstall: sh $here/install-templates.sh" >&2
   exit 1
 fi
 
 if [ -n "$drifted" ]; then
-  echo "TEMPLATE CHECK FAILED — stale:$drifted" >&2
+  echo "TEMPLATE CHECK FAILED - stale:$drifted" >&2
   printf '%s\n' "$detail" >&2
   echo "" >&2
   echo "  reinstall: sh $here/install-templates.sh" >&2
