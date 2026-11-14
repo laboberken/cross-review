@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Verify the installed reviewer templates match the ones this skill ships.
 #
 # Why this exists: a v1 template satisfies "hc templates lists reviewer", so
@@ -12,10 +12,12 @@
 # Exit 0 = every shipped template is installed and matches.
 # Exit 1 = a template is missing, or its command/description has drifted.
 # Exit 2 = cannot run (no hc and no JSON argument, or unreadable JSON).
+#
+# POSIX sh only: this runs under dash on CI images, which has no arrays.
 
-set -euo pipefail
+set -eu
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+here=$(cd "$(dirname "$0")" && pwd -P)
 source_dir="$here/../templates"
 
 json_file="${1:-}"
@@ -36,26 +38,27 @@ else
   }
 fi
 
-# Extract one field for one template. Deliberately a narrow parse: the JSON is
-# a flat array of objects with string fields, and pulling in jq would add a
-# dependency this script does not need.
+# Pull one field for one template out of the listing. A narrow parse: the
+# listing is a flat array of objects with string fields, and jq is not a
+# dependency this script wants to take on.
 field_of() {
-  name="$1" key="$2"
   printf '%s' "$json" | python -c '
 import json, sys
 want_name, want_key = sys.argv[1], sys.argv[2]
-data = json.load(sys.stdin)
+try:
+    data = json.load(sys.stdin)
+except ValueError:
+    sys.exit(0)
 for entry in data.get("templates", []):
     if entry.get("name") == want_name:
         print(entry.get(want_key, ""))
         break
-' "$name" "$key" 2>/dev/null
+' "$1" "$2" 2>/dev/null || true
 }
 
-# The same parse for a shipped template's frontmatter.
+# The same field, read from a shipped template's frontmatter.
 shipped_field_of() {
-  file="$1" key="$2"
-  python - "$file" "$key" <<'PY'
+  python - "$1" "$2" <<'PY' 2>/dev/null || true
 import re, sys
 path, key = sys.argv[1], sys.argv[2]
 text = open(path, encoding="utf-8").read()
@@ -69,8 +72,9 @@ for line in m.group(1).splitlines():
 PY
 }
 
-missing=()
-drifted=()
+missing=""
+drifted=""
+detail=""
 checked=0
 
 for tpl in "$source_dir"/*.md; do
@@ -80,7 +84,7 @@ for tpl in "$source_dir"/*.md; do
 
   installed_command=$(field_of "$name" command)
   if [ -z "$installed_command" ]; then
-    missing+=("$name")
+    missing="$missing $name"
     continue
   fi
 
@@ -89,31 +93,24 @@ for tpl in "$source_dir"/*.md; do
     [ -z "$want" ] && continue
     got=$(field_of "$name" "$key")
     if [ "$want" != "$got" ]; then
-      drifted+=("$name|$key")
+      drifted="$drifted $name($key)"
+      detail="$detail
+  $name $key
+    installed: $got
+    shipped:   $want"
     fi
   done
 done
 
-if [ ${#missing[@]} -gt 0 ]; then
-  echo "TEMPLATE CHECK FAILED — not installed: ${missing[*]}" >&2
-  echo "  installed: ${missing[*]}" >&2
+if [ -n "$missing" ]; then
+  echo "TEMPLATE CHECK FAILED — not installed:$missing" >&2
   echo "  reinstall: sh $here/install-templates.sh" >&2
   exit 1
 fi
 
-if [ ${#drifted[@]} -gt 0 ]; then
-  summary=""
-  for entry in "${drifted[@]}"; do
-    summary="$summary ${entry%%|*}(${entry##*|})"
-  done
-  echo "TEMPLATE CHECK FAILED — stale:$summary" >&2
-  echo "" >&2
-  for entry in "${drifted[@]}"; do
-    name="${entry%%|*}"
-    key="${entry##*|}"
-    printf '  %s %s\n    installed: %s\n    shipped:   %s\n' \
-      "$name" "$key" "$(field_of "$name" "$key")" "$(shipped_field_of "$source_dir/$name.md" "$key")" >&2
-  done
+if [ -n "$drifted" ]; then
+  echo "TEMPLATE CHECK FAILED — stale:$drifted" >&2
+  printf '%s\n' "$detail" >&2
   echo "" >&2
   echo "  reinstall: sh $here/install-templates.sh" >&2
   exit 1

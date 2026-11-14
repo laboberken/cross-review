@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # Install the herdr-core reviewer templates.
 #
 # The templates carry the read-only contract that every reviewer agent runs
@@ -9,19 +9,21 @@
 #   sh scripts/install-templates.sh --dry-run    # show where it would go
 #
 # Where they go is not guessable: `hc` reads %APPDATA%\herdr-core\templates on
-# Windows and honour nothing else there (measured: XDG_CONFIG_HOME is ignored),
+# Windows and honours nothing else there (measured: XDG_CONFIG_HOME is ignored),
 # while on Unix it reads $XDG_CONFIG_HOME/herdr-core or ~/.config/herdr-core.
 # Rather than trust the guess, this script probes, copies, then reads back
 # through `hc templates` and fails if the copy is not visible.
+#
+# POSIX sh only: this runs under dash on CI images, which has no arrays.
 
-set -euo pipefail
+set -eu
 
 dry_run=0
 for arg in "$@"; do
   case "$arg" in
     --dry-run|-n) dry_run=1 ;;
     -h|--help)
-      sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//'
+      sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *)
@@ -31,30 +33,31 @@ for arg in "$@"; do
   esac
 done
 
-here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+here=$(cd "$(dirname "$0")" && pwd -P)
 source_dir="$here/../templates"
 
 # `hc` reads %APPDATA% on Windows, and ignores XDG_CONFIG_HOME there.
 is_windows=0
 [ -n "${APPDATA:-}" ] && is_windows=1
 
-# First existing herdr-core directory wins. The order is platform-informed so
-# that a Windows box with a stale ~/.config/herdr-core does not win over the
-# directory hc actually reads.
-candidates=()
-if [ "$is_windows" -eq 1 ]; then
-  candidates+=("$APPDATA/herdr-core")
-fi
-[ -n "${XDG_CONFIG_HOME:-}" ] && candidates+=("$XDG_CONFIG_HOME/herdr-core")
-candidates+=("$HOME/.config/herdr-core")
-
+# Candidates, in the order hc is likely to read them on this platform. A
+# Windows box keeps a stale ~/.config/herdr-core often enough that putting it
+# first would pick the wrong one.
 target=""
-probed=""
-for candidate in "${candidates[@]}"; do
-  probed="$probed  probed: $candidate"$'\n'
-  if [ -d "$candidate" ]; then
+if [ "$is_windows" -eq 1 ]; then
+  set -- "$APPDATA/herdr-core" "$HOME/.config/herdr-core"
+else
+  if [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    set -- "$XDG_CONFIG_HOME/herdr-core" "$HOME/.config/herdr-core"
+  else
+    set -- "$HOME/.config/herdr-core"
+  fi
+fi
+
+for candidate in "$@"; do
+  echo "  probed: $candidate"
+  if [ -z "$target" ] && [ -d "$candidate" ]; then
     target="$candidate/templates"
-    break
   fi
 done
 
@@ -68,7 +71,6 @@ if [ -z "$target" ]; then
   fi
 fi
 
-printf '%s' "$probed"
 echo "target: $target"
 
 if [ "$dry_run" -eq 1 ]; then
@@ -79,13 +81,13 @@ fi
 
 mkdir -p "$target"
 
-names=()
+names=""
 installed=0
 for tpl in "$source_dir"/*.md; do
   [ -e "$tpl" ] || continue
   cp "$tpl" "$target/"
   name=$(basename "$tpl" .md)
-  names+=("$name")
+  names="$names $name"
   echo "  installed $(basename "$tpl")"
   installed=$((installed + 1))
 done
@@ -104,7 +106,7 @@ fi
 
 json=$(hc templates --json 2>/dev/null || true)
 missing=""
-for name in "${names[@]}"; do
+for name in $names; do
   if printf '%s' "$json" | grep -q "\"name\"[[:space:]]*:[[:space:]]*\"$name\""; then
     :
   else
@@ -120,4 +122,4 @@ if [ -n "$missing" ]; then
   exit 1
 fi
 
-echo "verified: hc templates lists ${names[*]}"
+echo "verified: hc templates lists$names"
