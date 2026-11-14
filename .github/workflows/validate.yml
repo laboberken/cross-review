@@ -44,6 +44,19 @@ jobs:
             test -f "skills/cross-review/references/$f.md"
           done
 
+      - name: Check the review contract's axis/lens header
+        run: |
+          set -e
+          f=skills/review-agent/SKILL.md
+          grep -q '^AXIS: <' "$f"
+          grep -q '^COVERED:' "$f"
+          grep -q '^NOT COVERED:' "$f"
+          # The header is tolerated when absent, so the contract must say so.
+          grep -qi 'axis-undeclared' "$f"
+          # The parts other harnesses depend on must survive verbatim.
+          grep -q '`P0`: universal release blocker' "$f"
+          grep -q 'say `No findings.`' "$f"
+
       - name: Check templates carry a launch line
         run: |
           set -e
