@@ -76,9 +76,27 @@ no-trace guarantee without anything noticing.
 sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale
 ```
 
-If it exits non-zero, **stop**. Print the actual `command` line it reported and
-the reinstall command it suggests, and do not dispatch. A stale contract is not
-a review you can proceed with and caveat later.
+**Repair it yourself, but only when it is safe to.** The check distinguishes
+two failures, and they call for different handling:
+
+| The check says | Meaning | Do this |
+|---|---|---|
+| `not installed: <names>` | the template is absent — nothing to overwrite | run `install-templates.sh`, re-check, then dispatch |
+| `stale: <names>` | a template exists but differs from the one shipped | **ask the user first**, then reinstall |
+
+The asymmetry is deliberate. A missing template has nothing to lose; an
+existing one may have been edited by hand — a private flag added for one agent,
+a local path — and reinstalling would silently overwrite that. Never overwrite
+in silence.
+
+Either way, install only when `hc` is on PATH and the target directory is
+writable. If the install fails, fall back to stopping and printing the actual
+`command` line and the reinstall command. A stale contract is not a review you
+can proceed with and caveat later.
+
+Record the repair in the report — one line, `templates: reinstalled (missing:
+reviewer-opencode)`. A repair that is not mentioned is indistinguishable from a
+review that never needed one.
 
 This check is L3-only. L2 and L1 do not use templates, so a stale template is
 not their problem.
@@ -479,5 +497,5 @@ A capped review is not a passing review. Say which findings were still open.
 - `references/agents.md` — how to start each coding agent as a reviewer
 - `references/task-packet.md` — the packet to hand a reviewer
 - `references/troubleshooting.md` — measured failure modes and their fixes
-- `../review-agent/SKILL.md` — the shared finding format, bundled in this
-  toolkit and installed beside this skill
+- `references/finding-format.md` — the shared finding format every reviewer
+  follows, and the text each template carries verbatim

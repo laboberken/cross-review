@@ -120,10 +120,11 @@ back, so the controller reads the findings file after the process exits.
   `-s workspace-write -a never`. A read-only sandbox (`-s read-only`) blocks
   the findings write.
 - **skills**: it ships a built-in `review-agent` skill whose finding format is
-  P0–P3 with a `No findings.` sentinel — the same format as the `review-agent`
-  skill bundled in this toolkit, which makes the two vendors interchangeable.
-  It also loads the shared `herdr-core` skill and used it for the handoff,
-  unprompted.
+  P0–P3 with a `No findings.` sentinel — the same format this toolkit defines
+  in `finding-format.md`, which is what makes the two interchangeable. That is
+  also why the header is tolerated when absent: Codex's copy predates it and
+  cannot be updated. It also loads the shared `herdr-core` skill and used it
+  for the handoff, unprompted.
 - **skills reach**: Codex does **not** read `~/.claude/skills`. It reads
   `~/.codex/skills` only, so the shared skill repository is mirrored there
   with directory junctions. Run `sync-codex-skills.ps1` after adding,

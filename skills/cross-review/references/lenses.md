@@ -71,10 +71,10 @@ The prompt is six ingredients, in this order:
    command
 6. the **delivery clause** — where to write the findings and how to report back
 
-Plus the standing instructions from the `review-agent` skill, which is bundled
-in this toolkit and installed beside this one: the finding format, the flagging
-bar, the "every number must come from a command's output" rule, and the "check
-the premise you were given" rule.
+Plus the standing instructions in `finding-format.md`: the finding format, the
+flagging bar, the "every number must come from a command's output" rule, and
+the "check the premise you were given" rule. Each template carries that text
+verbatim, and CI keeps the copies identical.
 
 ## The intent statement
 

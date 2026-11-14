@@ -68,6 +68,10 @@ Claude Code through the shared `review-agent` skill, Codex through its own
 built-in one. That is the point of a shared finding format — it makes two
 vendors machine-comparable.
 
+> _As measured, before v3. The contract now lives in
+> `skills/cross-review/references/finding-format.md`; the text below is
+> left as recorded._
+
 ```text
 [P1] Imperative finding title - path/to/file.py:line
 ```
