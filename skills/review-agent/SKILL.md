@@ -64,7 +64,27 @@ report a contradiction you find — the reviewers around you will not spot it.
 
 ## Write the result
 
-Present findings first, ordered by severity. One entry per issue:
+Open with the header, on these exact lines:
+
+```
+AXIS: <correctness|spec|standards> | LENS: <skeptic|architect|minimalist>
+COVERED: what this review inspected
+NOT COVERED: what it did not
+```
+
+Your task names the axis and the lens. Use them verbatim. If the task names
+neither, write `AXIS: undeclared | LENS: undeclared` rather than guessing — a
+guessed axis is worse than a declared absence.
+
+The header is the only part of this contract that is optional to a harness.
+Codex ships its own copy of this format; a report that omits the header is
+still a valid report, filed as axis-undeclared.
+
+When your axis is `spec`, every finding must quote the spec line it checks
+against. Without the quote, the finding is an opinion about scope, not a
+finding.
+
+Present findings after the header, ordered by severity. One entry per issue:
 
 ```
 [P1] Imperative finding title - path/to/file.rs:line

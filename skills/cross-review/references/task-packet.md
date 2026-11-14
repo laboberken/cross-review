@@ -12,13 +12,19 @@ before dispatch.
 A reviewer prompt is, in order:
 
 1. the **stated intent**
-2. the **lens** (full text from `lenses.md`, not a summary)
+2. the **lens** and the **axis** (full text from `lenses.md` and `axes.md`,
+   not a summary)
 3. the **scope** — the exact diff command and the baseline sha
-4. the **project rules** — the repository's own `AGENTS.md` and its test command
+4. the **project rules** — the repository's own `AGENTS.md` and its test
+   command
 5. the **delivery clause** — where to write the findings, and how to report back
 
 Never rewrite the lens or the brief. The delivery clause is the only thing you
 add.
+
+The axis names what counts as a standard; the lens names how the reviewer
+challenges. A reviewer is dispatched with a pair, e.g. `Skeptic@Correctness`.
+It reports both back in the header `review-agent` defines.
 
 ## Round 1 — first review
 
@@ -31,6 +37,9 @@ explicitly out of scope>
 
 YOUR LENS: <LENS NAME>
 <full lens text: its challenges, its questions>
+
+YOUR AXIS: <AXIS NAME>
+<full axis text: what counts as a standard here, and the questions it asks>
 
 SCOPE
 The base is commit <BASELINE_SHA>. The change under review is exactly:
@@ -60,8 +69,16 @@ HOW TO REVIEW
 
 FINDINGS
 Write them to <FINDINGS_PATH>. That is the only file you may write.
-Do not read any other file under .review/ — files there belong to other rounds
-or other reviewers and are not part of your input.
+Do not read any other file under <ROUNDS_DIR>/ — files there belong to other
+rounds or other reviewers and are not part of your input.
+
+Open the file with the header from the review contract:
+
+AXIS: <AXIS NAME> | LENS: <LENS NAME>
+COVERED: <what you inspected>
+NOT COVERED: <what you did not>
+
+If your axis is spec, quote the spec line each finding checks against.
 
 Report one finding per issue, most severe first:
 
@@ -99,6 +116,9 @@ THE INTENT
 YOUR LENS: <LENS NAME>
 <full lens text>
 
+YOUR AXIS: <AXIS NAME>
+<full axis text>
+
 SCOPE
 This is round <N>. The base is commit <BASELINE_SHA>, which is the exact state
 round <N-1> reviewed. The change under review is exactly:
@@ -110,7 +130,7 @@ PROJECT RULES
 
 HOW TO REVIEW
 1. Read the previous round's findings file: <PREVIOUS_FINDINGS_PATH>
-   It is the only file under .review/ you may read.
+   It is the only file under <ROUNDS_DIR>/ you may read.
 2. Read the current `git diff <BASELINE_SHA>`.
 3. For each finding in that file, state whether it is now correctly fixed,
    still present, or only partially fixed. Give the evidence: the changed code
@@ -123,7 +143,10 @@ HOW TO REVIEW
 
 FINDINGS
 Write them to <FINDINGS_PATH>. That is the only file you may write.
-Do not read any other file under .review/.
+Do not read any other file under <ROUNDS_DIR>/.
+
+Keep the header at the top of the file: `AXIS: <AXIS NAME> | LENS: <LENS NAME>`
+followed by `COVERED:` and `NOT COVERED:`.
 
 Format:
 
@@ -172,12 +195,12 @@ Then stop.
 ## Checklist before dispatching
 
 - [ ] the intent is written, and names what is out of scope
-- [ ] the lens text is pasted in full
+- [ ] the lens text is pasted in full, and the axis text with it
 - [ ] baseline sha exists and resolves
-- [ ] the findings path is `.review/round-<N>/<lens>.md`, and that directory
-      holds nothing from an earlier round
+- [ ] the findings path is `<ROUNDS_DIR>/round-<N>/<lens>.md`, and that
+      directory holds nothing from an earlier round
 - [ ] the previous round's single file is named explicitly, and the packet says
-      it is the only file under `.review/` the reviewer may read
+      it is the only file under `<ROUNDS_DIR>/` the reviewer may read
 - [ ] the test command was verified to run, not just read
 - [ ] the parent address is expanded
 - [ ] the `hc send` command is spelled exactly as shown

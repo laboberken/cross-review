@@ -8,12 +8,33 @@ agent, and they all live here.
 
 | Field | Meaning |
 |---|---|
-| `command` | how to start it, including Windows specifics |
+| `command` | how to start it interactively (L3), including Windows specifics |
+| `print` | how to run it as a one-shot reviewer (L2), when it has one |
 | `prompt` | how it takes the task — `argv` or `stdin` |
 | `status` | whether it reports agent status (OSC 7501), and whether that is verified |
 | `dialogs` | startup dialogs that block the first message, and how to clear them |
+| `friction` | how much babysitting it costs at L3 — see the ladder below |
 
-## The contract every reviewer must satisfy
+## Prefer the lowest-friction agent
+
+Friction is not uniform, so the default reviewer is chosen by it rather than
+by brand. **opencode is the default on Windows**: it reports status and raises
+no startup dialogs observed. Codex is the fallback when its built-in copy of
+the review contract matters more than control — it reports no status and its
+paste needs a second Enter, so it cannot be waited on by name.
+
+| Agent | Friction | Why |
+|---|---|---|
+| opencode | **low** | reports status, no dialogs, `argv` prompt |
+| claude | **medium** | reports status, but a folder-trust dialog blocks the first message on an unseen directory |
+| codex | **high** | no status, paste needs a second Enter, so collect by message not by wait |
+| others | unknown | try, then record what you measured |
+
+Pick the lowest-friction agent **whose model family differs from yours**. The
+cross-model requirement outranks the friction preference: a low-friction
+same-model reviewer is not a review.
+
+## The contract every reviewer must satisfy at L3
 
 1. Runs as an **interactive TUI**, not a one-shot print mode. A one-shot mode
    (`claude -p`, `codex exec`) never reports status and cannot be watched or
@@ -28,6 +49,10 @@ An agent that does not report status still works: `hc wait <t>` then waits for
 the process to exit instead of for a status change, and `hc read <t>` still
 returns the output. Status reporting only makes the wait nicer.
 
+At **L2** the contract is looser: a print-mode run needs no status, no shell,
+and no stdout discipline beyond writing its findings file. It cannot report
+back, so the controller reads the findings file after the process exits.
+
 ## Registered agents
 
 ### claude (Claude Code)
@@ -35,6 +60,8 @@ returns the output. Status reporting only makes the wait nicer.
 - **command**: `claude.cmd` — the Windows npm shim. The npm bin directory also
   contains a bash shim named `claude`, which is what resolves when the command
   runs through `sh` (as templates do). Both work.
+- **print**: `claude -p "<PACKET>"` with `--allowedTools` scoped as below. Use
+  at L2 only. Do **not** use it at L3 — it never reports status.
 - **prompt**: `argv`. Verified.
 - **status**: reports `app: "claude-code"` with `idle`/`working`/`done`.
   **Verified** — `hc wait` captures a turn boundary reliably.
@@ -43,9 +70,9 @@ returns the output. Status reporting only makes the wait nicer.
   false`. Clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
   persists, so re-dispatch and the task goes through.
 - **permissions**: scope the write access, e.g.
-  `--allowedTools "Read Grep Glob Bash Write(.review/**)"`. Claude Code will
-  not prompt for allowed tools, so a reviewer never stalls on a permission
-  prompt.
+  `--allowedTools "Read Grep Glob Bash Write(<git-dir>/cross-review/**)"`.
+  Claude Code will not prompt for allowed tools, so a reviewer never stalls on
+  a permission prompt.
 - **notes**: `--permission-mode plan` makes it read-only but also prevents it
   from writing its findings file, so it is not a substitute for scoping
   `Write`.
@@ -58,9 +85,11 @@ returns the output. Status reporting only makes the wait nicer.
   `%LOCALAPPDATA%\OpenAI\Codex\bin\<hash>\codex.exe`, where `<hash>` changes
   on every update, so that path cannot be used directly; the npm copy is the
   stable one.
-- **prompt**: `argv`. Also has a `codex exec` one-shot mode and a
-  `codex review` subcommand — both are print modes, so do not use them as a
-  reviewer.
+- **print**: `codex exec "<PACKET>"` — verified present on this machine. Reads
+  stdin when the prompt is `-`. Use this for L2 only; at L3 it cannot be
+  watched or steered. `codex review` is a different, narrower print mode and is
+  not this protocol.
+- **prompt**: `argv`.
 - **status**: **does not report agent status.** `hc get` shows `status: null`
   and `turn` stuck at 1 even while it is working. Consequence: `hc wait <t>`
   cannot detect a turn boundary — it waits for the process to exit, and the
@@ -100,6 +129,8 @@ returns the output. Status reporting only makes the wait nicer.
 ### opencode
 
 - **command**: `opencode.cmd` (npm shim) or `opencode2.cmd`.
+- **print**: `opencode run --format json "<PACKET>"` — verified present on this
+  machine. Use `--agent` to pick an agent if the default one prompts.
 - **prompt**: `argv`. Verified as the controller side.
 - **status**: reports `app: "opencode"` with `working`/`idle`.
   **Verified**.

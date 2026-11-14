@@ -5,11 +5,11 @@ Every entry here was measured on a real run, not inferred.
 ## The reviewer reviewed the wrong change
 
 **Symptom.** The reviewer spends minutes on findings that belong to an earlier
-round. Its transcript shows it reading files under `.review/` that were not in
-its scope.
+round. Its transcript shows it reading files under `<git-dir>/cross-review/`
+that were not in its scope.
 
 **Measured.** A reviewer was given the working-tree diff and a fresh findings
-path. It ran `cat .review/round3.md`, then spent four minutes and 23k tokens
+path. It ran `cat round3.md`, then spent four minutes and 23k tokens
 re-verifying the previous round's `order_total` discount defect, and never
 wrote its own findings file.
 
@@ -19,9 +19,10 @@ as input.
 
 **Fix.**
 
-- One directory per round: `.review/round-<N>/<lens>.md`.
-- In the packet: *"Do not read any other file under .review/ — files there
-  belong to other rounds or other reviewers and are not part of your input."*
+- One directory per round: `<git-dir>/cross-review/round-<N>/<lens>.md`.
+- In the packet: *"Do not read any other file under `<ROUNDS_DIR>/` — files
+  there belong to other rounds or other reviewers and are not part of your
+  input."*
 - Name the one previous file the reviewer may read, explicitly.
 
 **Rule of thumb.** If a reviewer takes more than a few minutes and has not
@@ -209,8 +210,8 @@ Or read the raw text and pull only the segment you need.
 a sandbox. `--allowedTools` with a broad `Write` permits it.
 
 **Fix.** Check `git status` after every round and treat any source change as a
-contract breach. The shipped template scopes `Write(.review/**)`; if that
-scope ever fails to hold, narrow the allow-list further.
+contract breach. The shipped template scopes `Write` to the findings directory;
+if that scope ever fails to hold, narrow the allow-list further.
 
 ## The reviewer ran the tests and left `__pycache__`
 
@@ -218,6 +219,31 @@ Expected. Reviewers execute code to verify findings.
 
 **Fix.** `.gitignore` should cover it. Otherwise the reviewer's own artefacts
 show up in the next round's diff.
+
+## The review left a commit behind
+
+**Symptom.** `git log` gained a baseline commit named after the review round.
+
+**Cause.** An older version of this skill pinned its baseline by committing.
+That is gone: the baseline is a tree snapshotted through a throwaway index.
+
+**Fix.** A review produces no commit on the current branch. If you find one,
+the skill is running an old copy — reinstall it.
+
+## The reviewer got an empty diff
+
+**Symptom.** The reviewer reports `No findings.`, or says the scope looks
+empty, on a tree that clearly has changes.
+
+**Cause.** The baseline was pinned with `git stash create -u` and diffed as
+`git diff $sha`. Measured: `stash create` snapshots the tree as it already is,
+so the diff is empty. `git diff <commit>` also drops untracked files, so a
+working-tree review misses new files even when the diff is not empty.
+
+**Fix.** Snapshot through a throwaway index and diff two trees:
+`GIT_INDEX_FILE=$tmp git read-tree HEAD`, `git add -A`, `git write-tree`, then
+`git diff <base> <snapshot>` for round 1 and `git diff <snap N>` for later
+rounds. Verify the round-1 diff with `--stat` before dispatching.
 
 ## The reviewer claims a finding is "pre-existing"
 

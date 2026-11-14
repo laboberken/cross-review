@@ -112,25 +112,57 @@ adversarial review of the login fix".
 
 1. The controller states the **intent** and what is out of scope, and checks
    the repository's own rules for contradictions.
-2. It picks **lenses** by change size: 1 reviewer under 50 lines, 2 under 200
-   lines or 5 files, 3 beyond that.
-3. It creates one Herdr tab and adds one **pane per reviewer**, each an
+2. It finds a **spec source** by working a six-step ladder — what you said,
+   what it already has in context, commit messages, a repository declaration,
+   a convention scan, then asking once. No spec means the Spec axis is skipped
+   and said to be skipped, never reported as passing.
+3. It assigns each reviewer one **axis** and one **lens** as a pair, and sizes
+   the panel by **risk** — public API, money/permissions paths, a failing
+   test, an area you named — rather than by line count.
+4. It creates one Herdr tab and adds one **pane per reviewer**, each an
    independent agent process launched through `hc`.
-4. Each reviewer writes its findings to `.review/round-<N>/<lens>.md` and
-   reports back with `hc send`.
-5. The controller presents each lens's report **in its own section** — no
-   merging, no cross-lens reranking — and rules on each individual finding:
-   accept, reject, or defer, with a reason.
-6. Accepted findings are fixed, a new baseline commit is landed, and the next
-   round reviews **only the delta**. Cap: 3 rounds.
+5. Each reviewer writes its findings to `<git-dir>/cross-review/round-<N>/`,
+   opening with the `AXIS`/`LENS` header, and reports back with `hc send`.
+6. The controller reports **axis-first and lens-within**, deduplicates findings
+   by `file:line`, and rules on each one: accept, reject, or defer, with a
+   reason.
+7. Accepted findings are fixed, the tree is snapshotted again, and the next
+   round reviews **only the delta**. A round that accepts nothing ends the
+   review; the 3-round cap is a backstop that says so when it is hit.
 
-### Lenses
+Nothing is committed: the baseline is a tree snapshotted through a throwaway
+index, so a review works on a dirty tree and leaves `git log` untouched.
+Findings live inside `.git/`, so they never appear in `git status`.
+
+### Axes and lenses
+
+An **axis** is what counts as a standard. A **lens** is how a reviewer
+challenges. Every reviewer gets one of each.
+
+| Axis | Asks |
+|---|---|
+| **Correctness** | Does the change do what it claims without breaking anything? |
+| **Spec fidelity** | Does it do all of what the spec asked, and nothing it did not? |
+| **Coding standards** | Does it follow the repo's documented standards and the smell baseline? |
 
 | Lens | Challenges |
 |---|---|
 | **Skeptic** | correctness and completeness — what breaks, what is unhandled, what is believed but unproven |
 | **Architect** | structural fitness — does the design serve the goal, where do the couplings hurt, what breaks under scale |
 | **Minimalist** | necessity and complexity — what can be deleted, what is being solved prematurely, what is the simplest path |
+
+### Transports
+
+The protocol is the same at every rung; only how a reviewer starts changes.
+
+| Rung | When | What it is |
+|---|---|---|
+| **L3** | inside Herdr | Visible panes — steerable, askable afterwards |
+| **L2** | a cross-model CLI is installed | Print mode (`codex exec`, `opencode run`, `claude -p`). Cheap; verdict is an exit code (0/1/2) |
+| **L1** | neither | A same-harness subagent, announced as same-family in the report |
+
+CI is **out of scope**. This is a local, human-driven tool; L2 exists because
+it is the cheap local path.
 
 ### Agents
 
@@ -165,8 +197,10 @@ user closes them, so the transcript stays readable.
 │   ├── cross-review/
 │   │   ├── SKILL.md                 # name: cross-review
 │   │   ├── references/
+│   │   │   ├── axes.md              # Correctness / Spec / Standards + smells
 │   │   │   ├── lenses.md            # Skeptic / Architect / Minimalist
-│   │   │   ├── agents.md            # agent registry
+│   │   │   ├── spec-sources.md      # the six-step spec ladder
+│   │   │   ├── agents.md            # agent registry, friction, print modes
 │   │   │   ├── task-packet.md       # the packet handed to a reviewer
 │   │   │   └── troubleshooting.md   # measured failure modes
 │   │   ├── commands/cross-review.md # slash command
@@ -175,6 +209,11 @@ user closes them, so the transcript stays readable.
 │   │   └── scripts/                 # install and mirror helpers
 │   └── review-agent/
 │       └── SKILL.md                 # name: review-agent
+├── docs/
+│   ├── design.md                    # D1-D19: why the toolkit is shaped this way
+│   └── agents/                      # tracker, triage labels, domain layout
+├── AGENTS.md                        # repo rules (CLAUDE.md imports it)
+├── GLOSSARY.md                       # domain glossary
 ├── .github/workflows/validate.yml
 ├── LICENSE
 └── README.md
