@@ -1,7 +1,7 @@
 # cross-review — design record
 
 Written 2026-11-14, after a design interview. Records why the toolkit is
-shaped the way it is. Read `README.md` for what it does and `CONTEXT.md` for
+shaped the way it is. Read `README.md` for what it does and `GLOSSARY.md` for
 the vocabulary.
 
 ## Current state (v1)

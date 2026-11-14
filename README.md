@@ -213,7 +213,7 @@ user closes them, so the transcript stays readable.
 │   ├── design.md                    # D1-D19: why the toolkit is shaped this way
 │   └── agents/                      # tracker, triage labels, domain layout
 ├── AGENTS.md                        # repo rules (CLAUDE.md imports it)
-├── CONTEXT.md                       # domain glossary
+├── GLOSSARY.md                       # domain glossary
 ├── .github/workflows/validate.yml
 ├── LICENSE
 └── README.md

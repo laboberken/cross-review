@@ -7,7 +7,8 @@ A two-skill toolkit for coding agents: cross-model adversarial review. See
 
 ### Issue tracker
 
-Local markdown under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+GitHub Issues on `laboberken/cross-review`, via the `gh` CLI; native sub-issues
+and blocking dependencies. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
@@ -15,4 +16,4 @@ Five canonical roles, label strings unchanged. See `docs/agents/triage-labels.md
 
 ### Domain docs
 
-Single-context: `CONTEXT.md` + `docs/adr/`. See `docs/agents/domain.md`.
+Single-context: `GLOSSARY.md` + `docs/adr/`. See `docs/agents/domain.md`.
