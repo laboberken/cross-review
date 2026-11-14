@@ -2,20 +2,31 @@
 #
 # Claude Code reads ~/.claude/skills natively. opencode reads it as a
 # compatibility source. Codex does NOT: it only reads ~/.codex/skills (or
-# $CODEX_HOME/skills). This script keeps ~/.codex/skills in step by creating
-# one directory junction per skill.
+# $CODEX_HOME/skills). `npx skills add` does not fill that directory, so this
+# script keeps it in step by creating one directory junction per skill.
 #
-# Run it after adding, renaming, or removing a skill in ~/.claude/skills.
+# The source is ~/.agents/skills when it exists, because that is where
+# `npx skills add` puts the real files and links ~/.claude/skills to them.
+# Otherwise it falls back to ~/.claude/skills.
+#
+# If a source entry is itself a junction, the link points at its resolved
+# target, so junctions never chain.
+#
 # Codex's own ~/.codex/skills/.system is left alone.
 #
-#   pwsh -File ~/.claude/sync-codex-skills.ps1
+#   pwsh -File scripts/sync-codex-skills.ps1
 
 $ErrorActionPreference = 'Stop'
 
-$source = Join-Path $HOME '.claude\skills'
-$target = Join-Path $HOME '.codex\skills'
+$candidates = @(
+    (Join-Path $HOME '.agents\skills'),
+    (Join-Path $HOME '.claude\skills')
+)
+$source = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $source) { Write-Error "no skill source found (looked in $($candidates -join ', '))"; exit 1 }
 
-if (-not (Test-Path $source)) { Write-Error "source not found: $source"; exit 1 }
+$target = if ($env:CODEX_HOME) { Join-Path $env:CODEX_HOME 'skills' } else { Join-Path $HOME '.codex\skills' }
+
 New-Item -ItemType Directory -Force -Path $target | Out-Null
 
 $created = 0
@@ -26,8 +37,7 @@ $kept = 0
 foreach ($link in Get-ChildItem $target -Directory -Force) {
     if ($link.Name -eq '.system') { $kept++; continue }
     if ($link.LinkType -eq 'Junction') {
-        $origin = Join-Path $source $link.Name
-        if (-not (Test-Path $origin)) {
+        if (-not (Test-Path (Join-Path $source $link.Name))) {
             Remove-Item $link.FullName -Force
             $removed++
         }
@@ -36,13 +46,16 @@ foreach ($link in Get-ChildItem $target -Directory -Force) {
 
 # Create or refresh one junction per shared skill.
 foreach ($skill in Get-ChildItem $source -Directory -Force) {
+    # Resolve a junction source to its real target so links never chain.
+    $real = if ($skill.LinkType -eq 'Junction' -and $skill.Target) { $skill.Target } else { $skill.FullName }
+
     $link = Join-Path $target $skill.Name
     if (Test-Path $link) {
         $item = Get-Item $link -Force
         if ($item.LinkType -eq 'Junction') {
-            if ($item.Target -ne $skill.FullName) {
+            if ($item.Target -ne $real) {
                 Remove-Item $link -Force
-                New-Item -ItemType Junction -Path $link -Target $skill.FullName | Out-Null
+                New-Item -ItemType Junction -Path $link -Target $real | Out-Null
                 $created++
             } else {
                 $kept++
@@ -52,12 +65,12 @@ foreach ($skill in Get-ChildItem $source -Directory -Force) {
             # aside rather than destroy it.
             $backup = "$link.backup-$(Get-Date -Format yyyyMMdd-HHmmss)"
             Move-Item $link $backup
-            New-Item -ItemType Junction -Path $link -Target $skill.FullName | Out-Null
+            New-Item -ItemType Junction -Path $link -Target $real | Out-Null
             Write-Warning "real directory moved aside: $backup"
             $created++
         }
     } else {
-        New-Item -ItemType Junction -Path $link -Target $skill.FullName | Out-Null
+        New-Item -ItemType Junction -Path $link -Target $real | Out-Null
         $created++
     }
 }
