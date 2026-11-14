@@ -89,7 +89,7 @@ With a spec source:
 | Reviewer | Lens | Axis |
 |---|---|---|
 | 1 | Skeptic | Correctness |
-| 2 | Spec-Fidelity | Spec |
+| 2 | Skeptic | Spec |
 | 3 | Architect | Standards |
 
 Without a spec source:

@@ -1,5 +1,5 @@
 ---
-description: Cross-model adversarial code review over herdr-core (default scope: git diff HEAD)
+description: Cross-model adversarial code review (default scope: git diff HEAD)
 agent: build
 ---
 
@@ -11,7 +11,8 @@ Arguments: $ARGUMENTS
 Rules:
 
 - Parse the remaining natural-language text as the scope. Default scope is
-  `git diff HEAD` (staged + unstaged uncommitted changes).
+  `git diff HEAD` (staged + unstaged uncommitted changes). `--quick` runs one
+  `Skeptic@Correctness` reviewer on the cheapest available transport.
 - State the change's intent before dispatching any reviewer, and name what is
   out of scope for it.
 - Pin the baseline by snapshotting the working tree through a throwaway index
@@ -21,13 +22,19 @@ Rules:
   from yours. Prefer the lowest-friction agent available. If only a
   same-family reviewer is available, say so and record it in the report rather
   than silently proceeding.
-- Dispatch each reviewer as its own terminal under `hc`, one pane per reviewer
-  in a single Herdr tab. Keep the reviewers visible.
-- Wait by terminal address, never by name. If a reviewer does not report
-  status, collect its review by waiting for the report message instead.
+- Detect the transport first: L3 panes inside Herdr, L2 print mode
+  (`codex exec` / `opencode run` / `claude -p`), L1 a same-harness subagent
+  announced as same-family. Report which rung ran.
+- At L3, dispatch each reviewer as its own terminal under `hc`, one pane per
+  reviewer in a single Herdr tab, and keep them visible. Wait by terminal
+  address, never by name. If a reviewer does not report status, collect its
+  review by waiting for the report message instead.
+- Assign each reviewer one axis and one lens as a pair; size the panel by risk
+  signals, not line count. Find a spec source before choosing pairs.
 - Present the report axis-first and lens-within. Do not rerank across axes and
   do not merge lenses within an axis. Never report an axis that did not run as
-  passing.
+  passing. A report with no header is filed under Correctness and marked
+  `axis: undeclared`.
 - Deduplicate findings by `file:line` before ruling. Two reviewers at one
   location corroborate each other; the severity label is an opinion.
 - Apply your own judgment to each individual finding: accept, reject, or

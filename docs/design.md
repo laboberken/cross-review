@@ -331,8 +331,12 @@ One fixture, three cases, standard library only (this machine has Python
 | B | unrounded refund → Spec-axis P1 quoting the spec | cannot produce | must produce |
 | C | dirty tree + untracked file → no commit, snapshot baseline | fails | must pass |
 
-Case B is the load-bearing one: it fails if the Spec axis is removed, which is
-how "v2 is better than v1" becomes checkable instead of argued.
+Case B is the load-bearing one, with a caveat stated plainly: it proves the
+defect is real, that a check against the spec is what detects it, and that a
+correct implementation closes it. It does **not** prove a panel reports it --
+that needs a model to run, and no test here asserts model behaviour. What is
+automated is the defect and the process guarantees; the panel's coverage stays
+a manual check.
 
 ## Measured facts
 

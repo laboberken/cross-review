@@ -22,8 +22,8 @@ A stance, not a dimension.
 
 **Round** — one dispatch → collect → rule cycle.
 
-**Baseline** — the commit sha a round's diff is measured from. Pinned without
-writing to the working tree or the branch history.
+**Baseline** — the tree sha a round's diff is measured from. Snapshotted
+without writing to the working tree, the real index, or the branch history.
 
 **Delta** — the difference between the previous round's baseline and the
 current tree. Rounds after the first review only the delta.

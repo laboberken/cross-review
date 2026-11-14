@@ -47,17 +47,29 @@ Challenges **necessity and complexity**.
 
 Report a finding when you can name the specific thing to delete or defer.
 
+## The Spec axis is not a fourth lens
+
+The three lenses above are complete. The **Spec axis** is a different thing: an
+axis names *what counts as a standard* (`axes.md`), and a lens names *how the
+reviewer challenges*. Spec fidelity is an axis, so a Spec-axis reviewer still
+adopts one of the three lenses.
+
+The default pairing is `Skeptic@Spec` — a skeptic checking a change against the
+requirements. Do not invent a "Spec-Fidelity" lens to pair with it; that would
+make the axis masquerade as a stance and break the pairing rule.
+
 ## Assembling a lens into a reviewer prompt
 
-The prompt is five ingredients, in this order:
+The prompt is six ingredients, in this order:
 
 1. the **stated intent** — what the author is trying to achieve, and what
    success looks like
 2. the **lens** — the full text above, not a summary
-3. the **scope** — the exact diff command and the baseline sha
-4. the **project rules** — the repository's own `AGENTS.md`, with its test
+3. the **axis** — the full text from `axes.md`, not a summary
+4. the **scope** — the exact diff command and the baseline sha
+5. the **project rules** — the repository's own `AGENTS.md`, with its test
    command
-5. the **delivery clause** — where to write the findings and how to report back
+6. the **delivery clause** — where to write the findings and how to report back
 
 Plus the standing instructions from the `review-agent` skill, which is bundled
 in this toolkit and installed beside this one: the finding format, the flagging

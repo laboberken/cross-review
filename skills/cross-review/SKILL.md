@@ -1,19 +1,21 @@
 ---
 name: cross-review
-description: "Cross-model adversarial code review orchestrated over herdr-core. State the change's intent, dispatch independent reviewer agents on a different model (Claude Code, Codex CLI) as parallel panes in one Herdr tab, rule on each finding, then fix and re-review only the delta. Use when the user wants an adversarial review, a second opinion, a review by another agent or another model, a parallel review panel, or wants this agent to review another agent's work."
+description: "Cross-model adversarial code review. State the change's intent, dispatch independent reviewer agents on a different model family, each with one axis (correctness, spec, standards) and one lens (skeptic, architect, minimalist), then rule on each finding and re-review only the delta. Runs on interactive panes when herdr-core is present, print-mode CLIs otherwise, and a same-harness subagent as a declared last resort. Use when the user wants an adversarial review, a second opinion, a review by another agent or another model, or a review panel."
 license: MIT
-compatibility: Requires herdr-core (hc), herdr-app, and a git repository. Windows, macOS, and Linux.
+compatibility: Requires a git repository and at least one other agent CLI. herdr-core (hc) unlocks interactive panes; without it the skill falls back to print mode. Windows, macOS, and Linux.
 metadata:
-  requires: "herdr-core"
+  requires: "git"
+  recommends: "herdr-core"
 ---
 
 # Cross-model adversarial review
 
-You are the **controller**. Reviewers review. You state the intent, pick the
-lenses, dispatch them, rule on what they report, fix, and re-review.
+You are the **controller**. Reviewers review. You state the intent, choose the
+axes and lenses, dispatch them, rule on what they report, fix, and re-review.
 
-A reviewer is always a **separate agent process running on a different model
-family than yours**.
+At **L3** and **L2** a reviewer runs on a model family different from yours
+that is the point of the skill. Only **L1** falls back to your own harness,
+and when it does, the report says so.
 
 ## Why cross-model, and not just cross-process
 
@@ -155,7 +157,7 @@ Default pairs — with a spec:
 | Reviewer | Pair |
 |---|---|
 | 1 | `Skeptic@Correctness` |
-| 2 | `Spec-Fidelity@Spec` |
+| 2 | `Skeptic@Spec` |
 | 3 | `Architect@Standards` |
 
 Without a spec, reviewer 2 becomes `Architect@Standards` and reviewer 3 (large
@@ -306,10 +308,19 @@ stops one from masking the other. Never pick a single winner across axes.
 ...
 ```
 
+**Read the header first.** Every report opens with `AXIS:` and `LENS:`. If a
+report has no header — a harness carrying its own copy of the contract may
+omit it — file the report under **Correctness**, mark it
+`axis: undeclared`, and say so once in the output. Never guess the axis and
+never drop the report: an unlabelled finding is still a finding, but an
+unlabelled finding silently filed under the wrong axis is a coverage claim
+nobody checked.
+
 **Deduplicate by location before ruling.** The location is the finding and the
 severity is an opinion: two reviewers citing the same `file:line` are
 corroborating each other, not reporting twice. Credit both, and take the
 higher severity as the ruling band rather than averaging them.
+
 
 Measured on the same diff with the same lens and the same packet: Claude Code
 rated the negative-refund defect P3 and Codex rated the same defect at the
