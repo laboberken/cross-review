@@ -59,9 +59,10 @@ The prompt is five ingredients, in this order:
    command
 5. the **delivery clause** — where to write the findings and how to report back
 
-Plus the standing instructions from `review-agent/SKILL.md`: the finding
-format, the flagging bar, the "every number must come from a command's output"
-rule, and the "check the premise you were given" rule.
+Plus the standing instructions from the `review-agent` skill, which is bundled
+in this toolkit and installed beside this one: the finding format, the flagging
+bar, the "every number must come from a command's output" rule, and the "check
+the premise you were given" rule.
 
 ## The intent statement
 

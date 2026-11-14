@@ -286,4 +286,5 @@ noise rather than new defects.
 - `references/agents.md` — how to start each coding agent as a reviewer
 - `references/task-packet.md` — the packet to hand a reviewer
 - `references/troubleshooting.md` — measured failure modes and their fixes
-- `review-agent/SKILL.md` — the shared finding format, if installed
+- `../review-agent/SKILL.md` — the shared finding format, bundled in this
+  toolkit and installed beside this skill

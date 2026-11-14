@@ -88,13 +88,13 @@ returns the output. Status reporting only makes the wait nicer.
   `-s workspace-write -a never`. A read-only sandbox (`-s read-only`) blocks
   the findings write.
 - **skills**: it ships a built-in `review-agent` skill whose finding format is
-  P0–P3 with a `No findings.` sentinel — the same format as
-  `review-agent/SKILL.md`, which makes the two vendors interchangeable. It
-  also loads the shared `herdr-core` skill and used it for the handoff,
+  P0–P3 with a `No findings.` sentinel — the same format as the `review-agent`
+  skill bundled in this toolkit, which makes the two vendors interchangeable.
+  It also loads the shared `herdr-core` skill and used it for the handoff,
   unprompted.
 - **skills reach**: Codex does **not** read `~/.claude/skills`. It reads
   `~/.codex/skills` only, so the shared skill repository is mirrored there
-  with directory junctions. Run `~/.claude/sync-codex-skills.ps1` after adding,
+  with directory junctions. Run `sync-codex-skills.ps1` after adding,
   renaming, or removing a skill, or Codex will not see the new one.
 
 ### opencode

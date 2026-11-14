@@ -1,102 +1,98 @@
 # cross-review
 
-A cross-model adversarial code review skill for OpenCode, Claude Code, and
-Codex, orchestrated over [herdr-core](https://github.com/herdrdev/herdr-core).
-It states the change's intent, dispatches independent reviewer agents on
-different model families as parallel panes in one Herdr tab, rules on each
-finding, then fixes and re-reviews only the delta.
+A review toolkit for coding agents: **two skills** that make code review a
+cross-model exercise instead of a model grading its own homework.
 
-## Why another review skill?
+| Skill | What it does |
+|---|---|
+| [`cross-review`](skills/cross-review/SKILL.md) | The orchestration skill. States the change's intent, dispatches independent reviewer agents on different model families as parallel panes in one Herdr tab, rules on each finding, then fixes and re-reviews only the delta. |
+| [`review-agent`](skills/review-agent/SKILL.md) | The finding contract. A read-only, defect-first review format — P0–P3 severities, a `No findings.` sentinel, and the rules that stop a reviewer from inventing its own evidence. |
+
+They compose: `cross-review` runs the panel, `review-agent` gives the panel a
+common language so two vendors' reports can be compared line by line.
+
+## Why two skills instead of one
+
+Because they answer different questions and are useful apart.
+
+`cross-review` needs herdr-core, a git repository, and at least one other
+agent CLI. `review-agent` needs nothing but an agent — it is a review
+contract, and it improves any review, with or without a panel. Codex even
+ships it built in.
+
+Bundling them would have meant `review-agent` could never be installed on its
+own, and the shared-contract idea would collapse into "one skill's internal
+detail".
+
+## Why cross-model review
 
 Most "review this" prompts review with the same model that wrote the code.
-That is the weakest form of review available: the reviewer shares the
-author's blind spots. A clean context does not fix that — a different model
-does.
+That is the weakest form of review available: the reviewer shares the author's
+blind spots. A clean context does not fix that — a different model does.
 
-This skill encodes the parts that hold up:
+Measured on a single diff, same lens, same packet:
 
-- **Cross-model, not just cross-process** — reviewers run on a different model
-  family than the author. Isolation buys a clean context; a different model
-  buys different assumptions.
-- **A panel, not a reviewer** — two reviewers with different blind spots
-  found different defects on the same diff. The union is the finding set; a
-  single panel's blind spot is not.
-- **Intent first** — reviewers challenge whether the work achieves the stated
-  intent, not whether the intent itself is right. Without an intent a review
-  can only check rules, and rule-checking produces style findings dressed up
-  as defects.
-- **Roles, not dimensions** — Skeptic, Architect, and Minimalist are
-  behavioural stances that find different things. "Standards" and "Spec" are
-  two axes of one change; lenses are three different reviewers.
-- **Location is the finding, severity is an opinion** — the same defect at
-  the same line came back as P3 from one model and P2 from another.
-- **Re-derive every number** — reviewers fabricate plausible examples. The
-  author inherits them if they do not check.
-- **Round cap** — three rounds. Past that, further rounds surface stylistic
-  noise.
+| Location | Claude Code | Codex | Verdict |
+|---|---|---|---|
+| a cancellation guard that only blocked one of four post-warehouse states | P1 | P1 | agreed, same line |
+| a refund helper that can return a negative amount | P3 | P2 | agreed, **severity differs** |
+| new public functions shipping without tests | P2 | P2 | agreed |
+| half-cent rounding inconsistent on binary floats | P2 | — | **Codex missed it** |
+| the project's money rule contradicting its own price helpers | P2 | — | **Codex missed it** |
+| an unrelated file deleted in the same diff | P2 | P2 | both caught it |
+
+**The union is the finding set, not the intersection.** Neither panel alone
+was the answer.
 
 ## Installation
 
-Install as a global skill, from any of the three agents:
+Install everything in the toolkit:
 
 ```bash
 npx skills add https://github.com/laboberken/cross-review
 ```
 
-Or clone it:
+Install one skill by name:
+
+```bash
+npx skills add https://github.com/laboberken/cross-review@cross-review
+npx skills add https://github.com/laboberken/cross-review@review-agent
+```
+
+Or install by hand. Claude Code reads `~/.claude/skills` natively; opencode
+reads it as a compatibility source; Codex reads `~/.codex/skills` only, so the
+shared skill directory is mirrored there.
 
 ```bash
 git clone https://github.com/laboberken/cross-review.git
-cd cross-review
-```
-
-Claude Code reads `~/.claude/skills` natively. opencode reads it as a
-compatibility source. Codex reads `~/.codex/skills` only, so the shared skill
-repository is mirrored there:
-
-```bash
-# Claude Code and opencode
-mkdir -p ~/.claude/skills/cross-review
-cp -r SKILL.md references ~/.claude/skills/cross-review/
-
-# Codex (mirror)
-sh scripts/sync-codex-skills.sh
+cp -r cross-review/skills/* ~/.claude/skills/
+sh ~/.claude/skills/cross-review/scripts/sync-codex-skills.sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-New-Item -ItemType Directory -Force "$env:USERPROFILE\.claude\skills\cross-review"
-Copy-Item SKILL.md "$env:USERPROFILE\.claude\skills\cross-review\SKILL.md"
-Copy-Item references "$env:USERPROFILE\.claude\skills\cross-review\" -Recurse
-
-pwsh -File scripts\sync-codex-skills.ps1
+git clone https://github.com/laboberken/cross-review.git
+Copy-Item cross-review\skills\* "$env:USERPROFILE\.claude\skills\" -Recurse
+pwsh -File "$env:USERPROFILE\.claude\skills\cross-review\scripts\sync-codex-skills.ps1"
 ```
 
-Install the herdr-core reviewer templates — these carry the read-only
-contract every reviewer runs under, plus each agent's launch line:
+Install the herdr-core reviewer templates — these carry the read-only contract
+every reviewer runs under, plus each agent's launch line:
 
 ```bash
-sh scripts/install-templates.sh
+sh ~/.claude/skills/cross-review/scripts/install-templates.sh
 ```
 
 ```powershell
-pwsh -File scripts\install-templates.ps1
+pwsh -File "$env:USERPROFILE\.claude\skills\cross-review\scripts\install-templates.ps1"
 ```
 
 Optionally install the slash command:
 
 ```bash
 mkdir -p ~/.config/opencode/commands
-cp commands/cross-review.md ~/.config/opencode/commands/cross-review.md
-```
-
-`review-agent` — the shared finding format that makes two vendors
-machine-comparable — lives in its own repository:
-
-```bash
-git clone https://github.com/laboberken/review-agent.git
-cp -r review-agent/SKILL.md ~/.claude/skills/review-agent/SKILL.md
+cp ~/.claude/skills/cross-review/commands/cross-review.md ~/.config/opencode/commands/
 ```
 
 Restart your agent, or run `/reload`.
@@ -109,10 +105,10 @@ Restart your agent, or run `/reload`.
 /cross-review HEAD~3..HEAD
 ```
 
-Or ask in plain language: "review this change with a different model",
-"run an adversarial review of the login fix".
+Or ask in plain language: "review this change with a different model", "run an
+adversarial review of the login fix".
 
-### How it works
+### How the panel works
 
 1. The controller states the **intent** and what is out of scope, and checks
    the repository's own rules for contradictions.
@@ -126,7 +122,7 @@ Or ask in plain language: "review this change with a different model",
    merging, no cross-lens reranking — and rules on each individual finding:
    accept, reject, or defer, with a reason.
 6. Accepted findings are fixed, a new baseline commit is landed, and the next
-   round reviews **only the delta**.
+   round reviews **only the delta**. Cap: 3 rounds.
 
 ### Lenses
 
@@ -138,14 +134,13 @@ Or ask in plain language: "review this change with a different model",
 
 ### Agents
 
-`references/agents.md` is the registry: how to start each agent as a
-reviewer, whether it reports status, how it takes a prompt, and what startup
-dialogs it raises. Verified entries for Claude Code, Codex, and opencode;
+`skills/cross-review/references/agents.md` is the registry: how to start each
+agent as a reviewer, whether it reports status, how it takes a prompt, and
+what startup dialogs it raises. Verified for Claude Code, Codex, and opencode;
 unverified entries for `dsh-tui`, `dsh`, and `pi`.
 
 Each agent needs its own herdr-core template, because the template carries
-both the read-only contract and that agent's launch line. `templates/`
-contains the ones for Claude Code and Codex.
+both the read-only contract and that agent's launch line.
 
 ## Safety valves
 
@@ -166,28 +161,21 @@ user closes them, so the transcript stays readable.
 
 ```text
 .
-├── SKILL.md                     # skill definition (name: cross-review)
-├── commands/
-│   └── cross-review.md          # slash command
-├── references/
-│   ├── lenses.md                # the three lens definitions
-│   ├── agents.md                # agent registry: launch line, status, dialogs
-│   ├── task-packet.md           # the packet handed to a reviewer
-│   └── troubleshooting.md       # measured failure modes and their fixes
-├── templates/
-│   ├── reviewer.md              # herdr-core template for Claude Code
-│   └── reviewer-codex.md        # herdr-core template for Codex
-├── examples/
-│   ├── panel-two-models.md      # two reviewers, two model families, one diff
-│   ├── incremental-rereview.md  # three rounds, and the round that mattered
-│   └── agent-behaviour-matrix.md
-├── scripts/
-│   ├── install-templates.ps1
-│   ├── install-templates.sh
-│   ├── sync-codex-skills.ps1
-│   └── sync-codex-skills.sh
-├── .github/workflows/
-│   └── validate.yml
+├── skills/
+│   ├── cross-review/
+│   │   ├── SKILL.md                 # name: cross-review
+│   │   ├── references/
+│   │   │   ├── lenses.md            # Skeptic / Architect / Minimalist
+│   │   │   ├── agents.md            # agent registry
+│   │   │   ├── task-packet.md       # the packet handed to a reviewer
+│   │   │   └── troubleshooting.md   # measured failure modes
+│   │   ├── commands/cross-review.md # slash command
+│   │   ├── templates/               # herdr-core reviewer templates
+│   │   ├── examples/                # measured sessions
+│   │   └── scripts/                 # install and mirror helpers
+│   └── review-agent/
+│       └── SKILL.md                 # name: review-agent
+├── .github/workflows/validate.yml
 ├── LICENSE
 └── README.md
 ```
