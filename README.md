@@ -68,7 +68,8 @@ skills, and the reviewer templates described below are not skills, so it does
 
 The templates carry the read-only contract every reviewer runs under, plus each
 agent's launch line. They live in herdr-core's own config directory, which
-`npx` knows nothing about.
+`npx` knows nothing about. There is one per agent — `reviewer` (Claude Code),
+`reviewer-codex`, and `reviewer-opencode`.
 
 ```bash
 # macOS / Linux
