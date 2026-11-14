@@ -124,20 +124,44 @@ false certainty.
 **Rejected.** Adjudicate every contested location: cross-axis "conflicts" are
 an artefact of the grouping, not a real dispute.
 
-### D8 — Baseline from `git stash create -u`
+### D8 — Baseline from a temporary-index snapshot tree
 
-`BASELINE=$(git stash create -u)`, falling back to `HEAD` on a clean tree.
-The sha is recorded per round.
+Snapshot the current working tree into a git tree object using a throwaway
+index, and use that tree as the baseline:
 
-**Why.** Verified on this machine: the tree is untouched, and the diff
-correctly includes untracked files. Reviewing no longer requires a clean
-tree, and the branch history stays clean.
+```sh
+snapshot() {
+  idx=$(mktemp)
+  GIT_INDEX_FILE=$idx git read-tree HEAD
+  GIT_INDEX_FILE=$idx git add -A
+  GIT_INDEX_FILE=$idx git write-tree
+  rm -f "$idx"
+}
+```
 
-**Rejected.** A private ref via `commit-tree` + `update-ref`: more formal, two
-more commands, one more failure mode.
+Round 1 is `git diff <base-ref> <snapshot>`. Rounds after the first are
+`git diff <previous snapshot> <current snapshot>`. The tree sha, not a commit
+sha, is what gets recorded.
 
-**Rejected.** Keep the `wip:` commit and soft-reset afterwards: a crash
-leaves the noise behind.
+**Why.** It captures the working tree — including untracked files — as an
+immutable object, without touching the real index, the working tree, or the
+branch history.
+
+**Correction (measured).** An earlier version of this decision used
+`git stash create -u` and diffed against the resulting commit. That is wrong:
+`git stash create` snapshots the tree *as it already is*, so `git diff $sha`
+returns empty, and `git diff <commit>` omits untracked files anyway — a
+reviewer would have been handed an empty diff. The temp-index form was
+verified to show both a modified tracked file and a newly created untracked
+file in round 1, and to produce a two-file delta between two snapshots.
+
+**Rejected.** A private ref via `commit-tree` + `update-ref`: works, but writes
+a ref for something that needs no name.
+
+**Rejected.** `git stash create -u`: see the correction above.
+
+**Rejected.** Keep the `wip:` commit and soft-reset afterwards: a crash leaves
+the noise behind.
 
 ### D9 — Findings live inside `.git/`
 
@@ -286,7 +310,21 @@ One fixture, three cases, standard library only (this machine has Python
 |---|---|---|---|
 | A | cancellation guard, P1 at the guard line | passes | must pass |
 | B | unrounded refund → Spec-axis P1 quoting the spec | cannot produce | must produce |
-| C | dirty tree + untracked file → no commit, stash baseline | fails | must pass |
+| C | dirty tree + untracked file → no commit, snapshot baseline | fails | must pass |
 
 Case B is the load-bearing one: it fails if the Spec axis is removed, which is
 how "v2 is better than v1" becomes checkable instead of argued.
+
+## Measured facts
+
+Verified on this machine while designing, not read from documentation:
+
+- A temporary-index snapshot tree captures both a modified tracked file and a
+  newly created untracked file, and produces a correct two-file delta between
+  two snapshots, while leaving the real index and working tree untouched.
+- `git stash create -u` does **not** work as a baseline: it snapshots the
+  already-changed tree, so `git diff $sha` is empty, and `git diff <commit>`
+  omits untracked files regardless.
+- Python 3.15.1 is present; pytest is not.
+- `codex exec`, `opencode run`, and `claude -p` are all present.
+- `hc 0.1.21`, with `$HC_TERMINAL_ID` set, so L3 is live in this environment.

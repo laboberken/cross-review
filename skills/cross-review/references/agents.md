@@ -43,9 +43,9 @@ returns the output. Status reporting only makes the wait nicer.
   false`. Clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
   persists, so re-dispatch and the task goes through.
 - **permissions**: scope the write access, e.g.
-  `--allowedTools "Read Grep Glob Bash Write(.review/**)"`. Claude Code will
-  not prompt for allowed tools, so a reviewer never stalls on a permission
-  prompt.
+  `--allowedTools "Read Grep Glob Bash Write(<git-dir>/cross-review/**)"`.
+  Claude Code will not prompt for allowed tools, so a reviewer never stalls on
+  a permission prompt.
 - **notes**: `--permission-mode plan` makes it read-only but also prevents it
   from writing its findings file, so it is not a substitute for scoping
   `Write`.
