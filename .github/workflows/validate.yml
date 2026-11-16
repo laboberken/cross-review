@@ -260,6 +260,20 @@ jobs:
           grep -q 'npx skills add' README.md
           grep -qi 'does not install\|not install the\|templates are separate\|second step' README.md
 
+      # README's install check tells users what the shipped command must say.
+      # Lock it to the template's own launch line, or a rename ships the old
+      # form and users "fix" a correct install back to the rejected rule.
+      - name: README's install check agrees with the shipped template
+        run: |
+          set -e
+          rule=$(sed -n 's/^command: .*--allowedTools "[^"]*\(Edit([^)]*)\).*/\1/p' \
+                   skills/cross-review/templates/reviewer.md | head -1)
+          [ -n "$rule" ] || { echo "no Edit rule in the template" >&2; exit 1; }
+          grep -qF "$rule" README.md || {
+            echo "README does not show the shipped allow rule: $rule" >&2; exit 1; }
+          ! grep -qF 'Write(.git/cross-review/**)' README.md || {
+            echo "README still teaches the rejected Write(...) rule" >&2; exit 1; }
+
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v19
         with:
