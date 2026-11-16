@@ -39,7 +39,7 @@ could not make at all.
 **Both reviewers caught the premise mismatch.** The packet's intent said the
 author was *implementing* the feature; the diff in fact regressed a working
 implementation. Each independently said so, in its own words, and framed its
-findings accordingly. The `review-agent` "check the premise you were given"
+findings accordingly. The `finding-format.md` "check the premise you were given"
 clause is what caught it.
 
 **Both also caught the rules contradiction** the controller should have found

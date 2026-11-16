@@ -24,7 +24,7 @@ add.
 
 The axis names what counts as a standard; the lens names how the reviewer
 challenges. A reviewer is dispatched with a pair, e.g. `Skeptic@Correctness`.
-It reports both back in the header `review-agent` defines.
+It reports both back in the header `finding-format.md` defines.
 
 ## Round 1 — first review
 

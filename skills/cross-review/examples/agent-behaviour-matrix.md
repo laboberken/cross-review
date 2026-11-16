@@ -67,6 +67,10 @@ reported its status, so it may be showing a dialog".
 Given the same task, Codex loaded the shared `review-agent` skill for the
 finding format and the shared `herdr-core` skill for the handoff, unprompted:
 
+> _As measured, before v3. The contract now lives in
+> `skills/cross-review/references/finding-format.md`; the text below is
+> left as recorded._
+
 > I'm using the review-agent skill for the defect-first review and herdr-core
 > for the required final handoff.
 

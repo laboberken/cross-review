@@ -18,11 +18,11 @@ jobs:
           test -f README.zh-CN.md
           test -f LICENSE
 
-      - name: Check the toolkit holds both skills
+      - name: Check the toolkit holds its skill
         run: |
           set -e
           test -f skills/cross-review/SKILL.md
-          test -f skills/review-agent/SKILL.md
+          test -f skills/cross-review/references/finding-format.md
 
       - name: Validate every SKILL.md frontmatter
         run: |
@@ -66,7 +66,7 @@ jobs:
       - name: Check the review contract's axis/lens header
         run: |
           set -e
-          f=skills/review-agent/SKILL.md
+          f=skills/cross-review/references/finding-format.md
           grep -q '^AXIS: <' "$f"
           grep -q '^COVERED:' "$f"
           grep -q '^NOT COVERED:' "$f"
@@ -75,6 +75,70 @@ jobs:
           # The parts other harnesses depend on must survive verbatim.
           grep -q '`P0`: universal release blocker' "$f"
           grep -q 'say `No findings.`' "$f"
+
+      - name: Every template carries the finding format verbatim
+        run: |
+          set -e
+          python - <<'CHECK'
+          import pathlib, sys
+
+          fmt = pathlib.Path("skills/cross-review/references/finding-format.md")
+          text = fmt.read_text(encoding="utf-8")
+          marker = "## Flag a finding only when all of these are true"
+          want = text[text.index(marker):].rstrip()
+
+          failed = False
+          for tpl in sorted(pathlib.Path("skills/cross-review/templates").glob("*.md")):
+              body = tpl.read_text(encoding="utf-8")
+              if marker not in body:
+                  print(f"{tpl}: missing the finding-format block", file=sys.stderr)
+                  failed = True
+                  continue
+              got = body[body.index(marker):]
+              cut = got.find("## How to finish")
+              if cut != -1:
+                  got = got[:cut]
+              if got.rstrip() != want:
+                  print(f"{tpl}: finding format drifted from {fmt}", file=sys.stderr)
+                  failed = True
+          if failed:
+              sys.exit(1)
+          print("all templates carry the finding format verbatim")
+          CHECK
+
+      - name: Templates and the agent registry match two ways
+        run: |
+          set -e
+          for tpl in skills/cross-review/templates/*.md; do
+            name=$(basename "$tpl" .md)
+            # reviewer -> "### claude (Claude Code)"; reviewer-codex -> "### codex ("
+            agent=${name#reviewer}
+            agent=${agent#-}
+            [ -z "$agent" ] && agent=claude
+            grep -qi "^### $agent" skills/cross-review/references/agents.md || {
+              echo "template $name has no '### $agent' section in agents.md" >&2; exit 1; }
+          done
+          # and every registered agent that is a reviewer has a template
+          for agent in claude codex opencode; do
+            [ -f "skills/cross-review/templates/reviewer-$agent.md" ] ||
+              [ "$agent" = claude -a -f skills/cross-review/templates/reviewer.md ] || {
+              echo "agents.md registers $agent but there is no reviewer template" >&2; exit 1; }
+          done
+          echo "templates and registry agree"
+
+      - name: No template ships an unfilled command placeholder
+        run: |
+          set -e
+          for tpl in skills/cross-review/templates/*.md; do
+            line=$(sed -n 's/^command: //p' "$tpl" | head -1)
+            case "$line" in
+              ""|TODO*|*"<TODO"*)
+                echo "$tpl has no real launch line: '$line'" >&2
+                echo "  run scripts/add-agent.sh $tpl with the agent's command" >&2
+                exit 1 ;;
+            esac
+          done
+          echo "every template has a launch line"
 
       - name: Check templates carry a launch line
         run: |
@@ -91,12 +155,43 @@ jobs:
           echo "Example files: $count"
           test "$count" -ge 3
 
-      - name: Check scripts parse
+      - name: Check scripts parse, under dash as well as bash
         run: |
           set -e
           for f in skills/cross-review/scripts/*.sh; do
             bash -n "$f"
+            # CI invokes these with sh, which is dash on this image.
+            case "$(basename "$f")" in
+              *.sh) dash -n "$f" ;;
+            esac
           done
+
+      - name: add-agent.sh produces a conforming template
+        run: |
+          set -e
+          tmp=$(mktemp -d)
+          trap 'rm -rf "$tmp"' EXIT
+          cp -r skills/cross-review "$tmp/skill"
+          sh "$tmp/skill/scripts/add-agent.sh" sampleagent "sample --review" > /dev/null
+          tpl="$tmp/skill/templates/reviewer-sampleagent.md"
+          test -f "$tpl"
+          grep -q '^command: sample --review$' "$tpl"
+          # The generated contract must match the shipped one byte for byte.
+          GH_TOKEN_ANCHOR="## Flag a finding only when all of these are true"
+          sed -n "/^$GH_TOKEN_ANCHOR/,\$p" skills/cross-review/references/finding-format.md > "$tmp/want"
+          sed -n "/^$GH_TOKEN_ANCHOR/,/^## How to finish/p" "$tpl" | sed '/^## How to finish$/d' > "$tmp/got"
+          python - "$tmp/want" "$tmp/got" <<'PYCHECK'
+          import pathlib, sys
+          want = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").rstrip()
+          got = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8").rstrip()
+          if want != got:
+              print("generated template's contract does not match finding-format.md", file=sys.stderr)
+              sys.exit(1)
+          PYCHECK
+          # And it must refuse to overwrite.
+          if sh "$tmp/skill/scripts/add-agent.sh" sampleagent 2>/dev/null; then
+            echo "add-agent.sh overwrote an existing template" >&2; exit 1
+          fi
 
       - name: Installer probes the directory hc actually reads
         run: |
