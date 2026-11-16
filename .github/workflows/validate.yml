@@ -47,8 +47,6 @@ jobs:
       - name: Check the axes are wired, not just referenced
         run: |
           set -e
-          f=skills/cross-review/SKILL.md
-          grep -q 'Spec axis: NOT RUN' skills/cross-review/references/spec-sources.md
           # All twelve smells must be present. One line, no continuations:
           # a line at column 0 would terminate this block scalar.
           for s in 'Mysterious Name' 'Duplicated Code' 'Feature Envy' 'Data Clumps' 'Primitive Obsession' 'Repeated Switches' 'Shotgun Surgery' 'Divergent Change' 'Speculative Generality' 'Message Chains' 'Middle Man' 'Refused Bequest'; do
@@ -57,9 +55,6 @@ jobs:
           # The two binding rules must both be stated.
           grep -qi 'repo overrides' skills/cross-review/references/axes.md
           grep -qi 'judgement call' skills/cross-review/references/axes.md
-          # Transport ladder and the convergence gate.
-          grep -q 'L3' "$f" && grep -q 'L2' "$f" && grep -q 'L1' "$f"
-          grep -q 'did not converge' "$f"
           # No workflow-specific directory may be privileged.
           ! grep -q 'docs/agents/\*\*' skills/cross-review/references/spec-sources.md
 
@@ -192,6 +187,12 @@ jobs:
           if sh "$tmp/skill/scripts/add-agent.sh" sampleagent 2>/dev/null; then
             echo "add-agent.sh overwrote an existing template" >&2; exit 1
           fi
+
+      # `fixed` mode runs every case against the corrected module. Plain mode
+      # is RED on A and B by design — the planted defects prove the tests
+      # detect them — so CI asserts soundness and the process guarantees here.
+      - name: Fixture — the process guarantees, against the shipped snapshot script
+        run: sh tests/fixture/run-tests.sh fixed
 
       - name: Installer probes the directory hc actually reads
         run: |

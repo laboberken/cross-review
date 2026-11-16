@@ -323,7 +323,11 @@ planning tool changes is a liability.
 ## Verification
 
 One fixture, three cases, standard library only (this machine has Python
-3.15.1 and no pytest):
+3.15.1 and no pytest), tracked at `tests/fixture/` and run by CI in `fixed`
+mode (every case against the corrected module; plain mode is RED on A and B
+by design — the planted defects prove the tests detect them). Case C
+exercises the shipped `scripts/snapshot-baseline.sh`, so CI tests the
+artifact a reviewer runs, not a re-implementation of it:
 
 | Case | Asserts | v1 | v2 |
 |---|---|---|---|
