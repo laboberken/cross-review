@@ -173,6 +173,26 @@ class CaseC_ProcessGuarantees(unittest.TestCase):
         diff = self.git("diff", "--name-only", first, second).stdout.split()
         self.assertEqual(diff, ["orders.py"])
 
+    def test_documented_call_site_aborts_on_failure(self):
+        """SKILL.md's recipe must not swallow a failed snapshot.
+
+        `eval "$(cmd)"` discards cmd's exit status — measured: a failing
+        snapshot continued with empty BASE/SNAP. The shipped recipe captures
+        first and exits, so assert the abort, not just the script's status.
+        """
+        not_a_repo = tempfile.mkdtemp(prefix="cr-norepo-")
+        self.addCleanup(shutil.rmtree, not_a_repo, True)
+        recipe = (
+            'snap_out=$(sh "$1") || { echo SNAPSHOT-FAILED >&2; exit 7; }; '
+            'eval "$snap_out"'
+        )
+        out = subprocess.run(
+            ("sh", "-c", recipe, "sh", self.SCRIPT),
+            cwd=not_a_repo, capture_output=True, text=True,
+        )
+        self.assertEqual(out.returncode, 7, out.stderr)
+        self.assertIn("SNAPSHOT-FAILED", out.stderr)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

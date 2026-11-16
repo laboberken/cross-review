@@ -328,10 +328,13 @@ and delivery are not restated in them, and CI rejects a template that
 restates the format — the inverse of #12's verbatim-paste lock, which this
 decision replaces.
 
-**Why.** The format was restated in five places and had already drifted:
-D17's header existed in the owner and the packet but in none of the three
-templates, and the template and the packet carried two contradictory
-commands both labelled "exact".
+**Why.** The format had more than one owner. Before #12 it was restated in
+five places, and D17's header was missing from all three templates. By the
+rebase base (#12) the whole format had been pasted into every template
+verbatim — the copies were equal, but every format change was a five-file
+manual edit under a lock that only compared the pasted block, and the
+delivery command was doubled: the template and the packet carried two
+contradictory commands both labelled "exact".
 
 **Rejected.** Generated templates (one body, three stamped variants): a
 build step for three files, and hc still reads static files. **Rejected.**
@@ -354,6 +357,11 @@ body — where the format, the spec-quote rule and the delivery clause live.
 field through, and it does not. **Rejected.** A second probe in
 check-templates: the candidate order would exist twice, and the check could
 verify a directory the install did not write.
+
+**Amended 2026-11-16 (round 2).** The install's own read-back — a second
+`hc templates --json` name-grep — now delegates to `check-templates.sh`, so
+the hc-visibility probe has one home too; the same argument D21 made for the
+directory order applies to it.
 
 ### D22 — The delivery clause belongs to the packet
 
@@ -419,6 +427,34 @@ had recorded.
 
 **Rejected.** Keep the matrix as a dated measurement log: a second registry
 by another name, still drifting.
+
+### D26 — Findings are named and delivered by axis and lens
+
+The findings file is `<axis>-<lens>.md` and the delivery tag is
+`<AXIS>-<LENS> DONE`.
+
+**Why.** The default panel fields two Skeptics (`Skeptic@Correctness`,
+`Skeptic@Spec`). A `<lens>.md` path has them overwrite each other, and a
+`<LENS> DONE` tag makes two deliveries indistinguishable. Found by dogfooding
+the protocol against itself, not by a theoretical review.
+
+**Rejected.** `<lens>.md` plus a per-panel suffix the controller invents:
+implicit, easy to forget, and the protocol would stop being mechanical.
+
+### D27 — The delivery line is untrusted; the header is the identity
+
+The controller verifies each report's `AXIS:`/`LENS:` header against what it
+dispatched, and the final report names the panel's composition — each
+reviewer's transport and model family.
+
+**Why.** Measured: one panel's transport cross-wired two reviewers and a pane
+delivered another pane's report under its own name (agents.md, opencode
+entry; troubleshooting). The header survived the cross-wiring; the delivery
+label did not. And agent CLIs pick models quietly, so a reader cannot
+discount a same-family panel they cannot see.
+
+**Rejected.** Trusting delivery labels: the label is transport data, and the
+transport is the thing that failed.
 
 ## Known limits
 

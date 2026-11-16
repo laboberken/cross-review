@@ -30,13 +30,12 @@ It reports both back in the header `finding-format.md` defines.
 
 `references/finding-format.md` owns the finding format: the flagging bar,
 the header, the entry format, the `P0`–`P3` definitions, and the
-`No findings.` sentinel. The packet does not restate it. At assembly time,
-paste that file's contract section (from `## Flag a finding only when all
-of these are true` to the end) into the packet **verbatim** — the copy is
-mechanical, so the packet still stands alone and the contract cannot drift
-between owner and packet. Only the harness notes around the format (the
-header tolerated when absent, Codex's own copy) stay out: they are
-addressed to controllers, not reviewers.
+`No findings.` sentinel. The packet does not redefine it. At assembly time,
+paste that file's contract section — **from `## Flag a finding only when
+all of these are true` to the end of the file** — into the packet
+**verbatim**. The owner keeps its controller notes above that section, so
+the range contains reviewer-facing text only and the two rules do not
+collide.
 
 ## Round 1 — first review
 
@@ -94,7 +93,7 @@ DELIVERY
 Write the findings file FIRST. Only then report back with exactly this
 command (it is already expanded, run it as-is):
 
-hc send <PARENT_ADDRESS> "<LENS> DONE: <n> finding(s). Findings: <FINDINGS_PATH>"
+hc send <PARENT_ADDRESS> "<AXIS>-<LENS> DONE: <n> finding(s). Findings: <FINDINGS_PATH>"
 
 The file must be on disk before you send that command: if your terminal is
 closed mid-review, the file is the only thing that survives.
@@ -156,13 +155,14 @@ Format:
 <REPORT FORMAT — the same verbatim block from references/finding-format.md
 as round 1.>
 
-If there are no new findings, write exactly "No findings." under New findings.
+If there are no new findings, place the sentinel the report format defines —
+exactly "No findings." — under New findings.
 
 DELIVERY
 Write the findings file FIRST. Only then report back with exactly this
 command (it is already expanded, run it as-is):
 
-hc send <PARENT_ADDRESS> "<LENS> DONE round <N>: <n> new finding(s), <m> of <k> round-<N-1> findings fixed. Findings: <FINDINGS_PATH>"
+hc send <PARENT_ADDRESS> "<AXIS>-<LENS> DONE round <N>: <n> new finding(s), <m> of <k> round-<N-1> findings fixed. Findings: <FINDINGS_PATH>"
 
 Then stop.
 ```
@@ -198,8 +198,10 @@ Then stop.
 - [ ] the lens text is pasted in full, and the axis text with it
 - [ ] the report-format block was pasted from `finding-format.md` verbatim
 - [ ] baseline sha exists and resolves
-- [ ] the findings path is `<ROUNDS_DIR>/round-<N>/<lens>.md`, and that
-      directory holds nothing from an earlier round
+- [ ] the findings path is `<ROUNDS_DIR>/round-<N>/<axis>-<lens>.md`, and
+      that directory holds nothing from an earlier round
+- [ ] the delivery command's tag is `<AXIS>-<LENS>`, so two Skeptics in
+      one panel cannot deliver under the same label
 - [ ] the previous round's single file is named explicitly, and the packet says
       it is the only file under `<ROUNDS_DIR>/` the reviewer may read
 - [ ] the test command was verified to run, not just read

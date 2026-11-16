@@ -78,9 +78,11 @@ jobs:
           # one owner (references/finding-format.md) and the packet derives
           # its copy at assembly time; a template restating the format is a
           # second owner, which is the drift this repo keeps having to fix.
-          marker='## Flag a finding only when all of these are true'
+          # Match the heading anywhere on the line: a copy demoted to ### or
+          # indented is still a copy (measured bypass of the column-0 form).
+          marker='Flag a finding only when all of these are true'
           for tpl in skills/cross-review/templates/*.md; do
-            if grep -q "^$marker" "$tpl"; then
+            if grep -q "$marker" "$tpl"; then
               echo "$tpl restates the finding format; templates defer to references/finding-format.md" >&2
               exit 1
             fi
@@ -176,6 +178,12 @@ jobs:
       # detect them — so CI asserts soundness and the process guarantees here.
       - name: Fixture — the process guarantees, against the shipped snapshot script
         run: sh tests/fixture/run-tests.sh fixed
+
+      # The ps1 runner is a second adapter for the same modes. Run it too, or
+      # a mode missing on Windows ships silently (measured: `fixed` was
+      # ignored and the runner reported RED on correct code).
+      - name: Fixture parity — the ps1 runner speaks the same modes
+        run: pwsh -NoProfile -File tests/fixture/run-tests.ps1 fixed
 
       - name: locate-templates probes the directory hc actually reads
         run: |

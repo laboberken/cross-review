@@ -83,6 +83,7 @@ two failures, and they call for different handling:
 |---|---|---|
 | `not installed: <names>` | the template is absent — nothing to overwrite | run `install-templates.sh`, re-check, then dispatch |
 | `stale: <names>` | a template exists but differs from the one shipped | **ask the user first**, then reinstall |
+| `hc cannot see: <names>` | files exist where the check looked, but hc does not list them | reinstall, re-check, then dispatch — hc's view holds nothing of the user's to protect |
 
 The asymmetry is deliberate. A missing template has nothing to lose; an
 existing one may have been edited by hand — a private flag added for one agent,
@@ -141,7 +142,13 @@ Scope: the working tree, a base ref to `HEAD`, or a named ref.
 working tree and must not leave a commit behind.
 
 ```sh
-eval "$(sh <skill-dir>/scripts/snapshot-baseline.sh)"   # sets BASE and SNAP; non-zero exit on failure
+# Capture first, then eval: `eval "$(cmd)"` discards cmd's exit status, so a
+# failed snapshot would silently continue with empty BASE/SNAP.
+snap_out=$(sh <skill-dir>/scripts/snapshot-baseline.sh) || {
+  echo "snapshot failed — stop the review" >&2
+  exit 1
+}
+eval "$snap_out"                         # sets BASE and SNAP
 GIT_DIR=$(git rev-parse --absolute-git-dir)
 ROUNDS_DIR="$GIT_DIR/cross-review/round-1"
 mkdir -p "$ROUNDS_DIR"
@@ -268,8 +275,10 @@ agent — only the launch line does. If an agent is not in the registry, try it
 anyway and add it afterwards.
 
 **One findings directory per round.** Write this round's findings to
-`$ROUNDS_DIR/round-<N>/<lens>.md`, and name the previous round's file
-explicitly in the packet. A flat findings directory accumulates history, and
+`$ROUNDS_DIR/round-<N>/<axis>-<lens>.md`, and name the previous round's file
+explicitly in the packet. Axis and lens both belong in the name: the default
+panel fields two Skeptics, and a lens-only name would have them overwrite
+each other. A flat findings directory accumulates history, and
 reviewers treat every file in it as input — measured: a reviewer read a stale
 `round3.md` and spent four minutes reviewing the previous round's defects
 instead of the current diff.
@@ -360,10 +369,13 @@ stops one from masking the other. Never pick a single winner across axes.
 ...
 ```
 
-**Read the header first.** Every report opens with `AXIS:` and `LENS:`. If a
-report has no header — a harness carrying its own copy of the contract may
-omit it — file the report under **Correctness**, mark it
-`axis: undeclared`, and say so once in the output. Never guess the axis and
+**The delivery line is untrusted; the header is the identity.** The file's
+`AXIS:` and `LENS:` header, not the `hc send` label, says which pair produced
+the report — measured: one panel's transport cross-wired two reviewers, and a
+pane delivered another pane's report under its own name. Verify header
+against dispatch before you file it. If a report has no header — a harness
+carrying its own copy of the contract may omit it — file the report under
+**Correctness**, mark it `axis: undeclared`, and say so once in the output. Never guess the axis and
 never drop the report: an unlabelled finding is still a finding, but an
 unlabelled finding silently filed under the wrong axis is a coverage claim
 nobody checked.
@@ -400,6 +412,12 @@ Spec          NOT RUN    no spec source was found
 ```
 
 An axis that did not run is never reported as passing.
+
+**Name the panel above the verdicts** — each reviewer's transport and model
+family, e.g. `panel: opencode/DeepSeek (Skeptic@Correctness,
+Skeptic@Spec) · claude (Architect@Standards)`. Agent CLIs pick models that
+change without notice, and a reader cannot discount a same-family panel they
+cannot see.
 
 **An adjudicator is for a real contradiction, not for a difference between
 axes.** Dispatch one only when two reviewers reach opposite conclusions about
@@ -484,4 +502,5 @@ A capped review is not a passing review. Say which findings were still open.
 - `references/task-packet.md` — the packet to hand a reviewer
 - `references/troubleshooting.md` — measured failure modes and their fixes
 - `references/finding-format.md` — the shared finding format every reviewer
-  follows, and the text each template carries verbatim
+  follows: the one owner the templates defer to and the packet pastes at
+  assembly

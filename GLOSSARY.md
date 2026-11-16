@@ -41,7 +41,8 @@ print mode (L2), or a same-harness subagent (L1).
 
 **Contract** — the finding format in `cross-review/references/finding-format.md`:
 P0–P3 severities, the `No findings.` sentinel, the evidence rules, and the
-axis/lens header. Each template carries it verbatim; CI keeps the copies equal.
+axis/lens header. The packet pastes it at assembly; the templates defer to it,
+and CI rejects a template that restates it.
 
 ## Avoid
 

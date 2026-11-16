@@ -70,7 +70,8 @@ back, so the controller reads the findings file after the process exits.
   **Verified** — `hc wait` captures a turn boundary reliably.
 - **dialogs**: **folder trust** on a directory Claude Code has not seen before.
   It blocks the first message and `hc run` reports `first_message.sent:
-  false`. Clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
+  false`. The preselected option is "No, exit", which is why `down` comes
+  first: clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
   persists, so re-dispatch and the task goes through.
 - **permissions**: scope the write access, e.g.
   `--allowedTools "Read Grep Glob Bash Write(<git-dir>/cross-review/**)"`.
@@ -149,6 +150,14 @@ back, so the controller reads the findings file after the process exits.
   it submits its own paste, so it needs no follow-up key.
 - **notes**: the binary also emits an OSC title, so the terminal title in the
   Herdr window shows the session title.
+- **parallel panes**: **measured 2026-11-16 — do not run two opencode
+  reviewers as panes in one round.** Three parallel L3 panes shared one
+  opencode server; their session titles continued each other's, and one pane
+  executed a *different* pane's packet and delivered it under that pane's
+  label (`hc get` showed both session titles on all three terminals). Prefer
+  one reviewer per tab, or run opencode reviewers in L2 print mode
+  (`opencode run`) where each is its own process. Always verify a report's
+  header against what was dispatched before filing it.
 
 ### dsh-tui (DeepSeek Harness TUI launcher)
 

@@ -69,6 +69,32 @@ result and confirm it is the terminal you dispatched. If it is not, wait again.
 hc wait t1v --timeout 300
 ```
 
+## Two reviewers worked on the same packet
+
+**Symptom.** A reviewer delivers a report whose `hc send` label names a
+*different* reviewer, and the reviewer it was meant to be never wrote a file.
+
+**Measured.** Three opencode panes dispatched in one round (2026-11-16)
+shared one opencode server: their session titles continued each other's, one
+pane executed another pane's packet, and it delivered that report under its
+own terminal name. `hc get` showed the same two session titles on all three
+terminals.
+
+**Cause.** Session focus inside the shared opencode server, not packet
+assembly: each pane's `hc run` delivered `first_message.sent: true`. The
+transport mixed which session consumed which message.
+
+**Fix.**
+
+- For multiple opencode reviewers, run L2 print mode (`opencode run`): each
+  reviewer is its own process, nothing is shared.
+- If you must use panes, one reviewer per tab.
+- Whatever the transport, **verify the file's header against what you
+  dispatched** before filing — the header is the identity; the delivery label
+  is not. A cross-wired delivery that still produced a conforming report for
+  a split axis is a completed review of the wrong pair: re-dispatch the axis
+  that got nothing.
+
 ## The reviewer was interrupted
 
 **Symptom.** The reviewer's screen ends with `Interrupted`.

@@ -7,6 +7,11 @@
 #   sh run-tests.sh          # expect RED on A and B: the defects are planted
 #   sh run-tests.sh fixed    # expect GREEN: same tests, corrected module
 #   sh run-tests.sh ac       # A and C only, in isolation
+#   sh run-tests.sh b        # B only
+#
+# Same modes as run-tests.ps1; CI runs both runners so they cannot drift.
+#
+# POSIX sh only: this runs under dash on CI images, which has no arrays.
 
 set -eu
 

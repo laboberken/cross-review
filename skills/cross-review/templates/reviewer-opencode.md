@@ -29,11 +29,10 @@ reviewing something else.
 
 Your finding format is the review contract, defined in
 `references/finding-format.md` of the skill that dispatched you — the
-header (`AXIS`, `LENS`, `COVERED`, `NOT COVERED`), severities `P0`–`P3`,
-and exactly `No findings.` when there is nothing to report. Your task
-carries the format inline; read the reference for the full contract (the
-evidence rules, the spec-quote rule) if your harness can reach it. If the
-task names no axis, write `AXIS: undeclared` — never guess.
+header, the severities, the `No findings.` sentinel and the rules around
+them. Your task carries the format inline; read the reference for the full
+contract (the evidence rules, the spec-quote rule) if your harness can
+reach it.
 
 Write the findings file FIRST — if your terminal closes mid-review, the
 file is the only thing that survives. Then run the delivery command exactly

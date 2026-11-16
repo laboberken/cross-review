@@ -55,7 +55,10 @@ if [ ! -r "$source" ]; then
 fi
 
 # Replace the launch line in the frontmatter; the body is the shipped body.
-awk -v cmd="command: $command" '/^command: / { print cmd; next } { print }' \
+# The command reaches awk through the environment, not `-v`: `-v` interprets
+# backslash escapes, so a Windows launch line like C:\tools\aider.exe would
+# lose its separators (\t became a TAB, measured).
+CMD="$command" awk '/^command: / { print "command: " ENVIRON["CMD"]; next } { print }' \
   "$source" > "$target"
 
 echo "wrote $target"

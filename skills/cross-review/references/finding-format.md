@@ -1,13 +1,19 @@
 # Finding format
 
-The one canonical text for how a reviewer reports. Every referee template
-carries this section verbatim; `validate.yml` compares each template against
-this file and fails on any difference. Change the wording here and the build
-tells you which templates to update.
+The one canonical text for how a reviewer reports. The reviewer templates
+defer to this file — they carry standing rules only and never restate the
+format; `validate.yml` fails a template that restates it. The task packet
+derives its copy at assembly time by pasting this file's contract section
+verbatim, so the packet stands alone without becoming a second owner.
 
-This file defines the **shared** contract only. Each template adds its own
-role rules — do not modify files, do not delegate, check the premise — which
-are the same in spirit but written per agent.
+## Notes for controllers
+
+- The header is the only part of this contract that is optional to a harness.
+  Codex ships its own copy of this format; a report that omits the header is
+  still a valid report, filed as axis-undeclared.
+- The packet pastes the contract section **from `## Flag a finding only when
+  all of these are true` to the end of this file**, verbatim. Everything
+  above this section is addressed to controllers and stays out of the packet.
 
 ## Flag a finding only when all of these are true
 
@@ -43,10 +49,6 @@ NOT COVERED: what it did not
 Your task names the axis and the lens. Use them verbatim. If the task names
 neither, write `AXIS: undeclared | LENS: undeclared` rather than guessing — a
 guessed axis is worse than a declared absence.
-
-The header is the only part of this contract that is optional to a harness.
-Codex ships its own copy of this format; a report that omits the header is
-still a valid report, filed as axis-undeclared.
 
 When your axis is `spec`, every finding must quote the spec line it checks
 against. Without the quote, the finding is an opinion about scope, not a
