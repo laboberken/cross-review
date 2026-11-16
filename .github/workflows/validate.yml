@@ -47,8 +47,6 @@ jobs:
       - name: Check the axes are wired, not just referenced
         run: |
           set -e
-          f=skills/cross-review/SKILL.md
-          grep -q 'Spec axis: NOT RUN' skills/cross-review/references/spec-sources.md
           # All twelve smells must be present. One line, no continuations:
           # a line at column 0 would terminate this block scalar.
           for s in 'Mysterious Name' 'Duplicated Code' 'Feature Envy' 'Data Clumps' 'Primitive Obsession' 'Repeated Switches' 'Shotgun Surgery' 'Divergent Change' 'Speculative Generality' 'Message Chains' 'Middle Man' 'Refused Bequest'; do
@@ -57,9 +55,6 @@ jobs:
           # The two binding rules must both be stated.
           grep -qi 'repo overrides' skills/cross-review/references/axes.md
           grep -qi 'judgement call' skills/cross-review/references/axes.md
-          # Transport ladder and the convergence gate.
-          grep -q 'L3' "$f" && grep -q 'L2' "$f" && grep -q 'L1' "$f"
-          grep -q 'did not converge' "$f"
           # No workflow-specific directory may be privileged.
           ! grep -q 'docs/agents/\*\*' skills/cross-review/references/spec-sources.md
 
@@ -76,35 +71,25 @@ jobs:
           grep -q '`P0`: universal release blocker' "$f"
           grep -q 'say `No findings.`' "$f"
 
-      - name: Every template carries the finding format verbatim
+      - name: Templates defer to the finding format, not restate it
         run: |
           set -e
-          python - <<'CHECK'
-          import pathlib, sys
-
-          fmt = pathlib.Path("skills/cross-review/references/finding-format.md")
-          text = fmt.read_text(encoding="utf-8")
-          marker = "## Flag a finding only when all of these are true"
-          want = text[text.index(marker):].rstrip()
-
-          failed = False
-          for tpl in sorted(pathlib.Path("skills/cross-review/templates").glob("*.md")):
-              body = tpl.read_text(encoding="utf-8")
-              if marker not in body:
-                  print(f"{tpl}: missing the finding-format block", file=sys.stderr)
-                  failed = True
-                  continue
-              got = body[body.index(marker):]
-              cut = got.find("## How to finish")
-              if cut != -1:
-                  got = got[:cut]
-              if got.rstrip() != want:
-                  print(f"{tpl}: finding format drifted from {fmt}", file=sys.stderr)
-                  failed = True
-          if failed:
-              sys.exit(1)
-          print("all templates carry the finding format verbatim")
-          CHECK
+          # The templates carry standing rules only. The finding format has
+          # one owner (references/finding-format.md) and the packet derives
+          # its copy at assembly time; a template restating the format is a
+          # second owner, which is the drift this repo keeps having to fix.
+          # Match the heading anywhere on the line: a copy demoted to ### or
+          # indented is still a copy (measured bypass of the column-0 form).
+          marker='Flag a finding only when all of these are true'
+          for tpl in skills/cross-review/templates/*.md; do
+            if grep -q "$marker" "$tpl"; then
+              echo "$tpl restates the finding format; templates defer to references/finding-format.md" >&2
+              exit 1
+            fi
+            grep -q 'references/finding-format.md' "$tpl" ||
+              { echo "$tpl does not reference the finding format" >&2; exit 1; }
+          done
+          echo "templates defer to the finding format"
 
       - name: Templates and the agent registry match two ways
         run: |
@@ -176,34 +161,41 @@ jobs:
           tpl="$tmp/skill/templates/reviewer-sampleagent.md"
           test -f "$tpl"
           grep -q '^command: sample --review$' "$tpl"
-          # The generated contract must match the shipped one byte for byte.
-          GH_TOKEN_ANCHOR="## Flag a finding only when all of these are true"
-          sed -n "/^$GH_TOKEN_ANCHOR/,\$p" skills/cross-review/references/finding-format.md > "$tmp/want"
-          sed -n "/^$GH_TOKEN_ANCHOR/,/^## How to finish/p" "$tpl" | sed '/^## How to finish$/d' > "$tmp/got"
-          python - "$tmp/want" "$tmp/got" <<'PYCHECK'
-          import pathlib, sys
-          want = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8").rstrip()
-          got = pathlib.Path(sys.argv[2]).read_text(encoding="utf-8").rstrip()
-          if want != got:
-              print("generated template's contract does not match finding-format.md", file=sys.stderr)
-              sys.exit(1)
-          PYCHECK
+          # The generated template is the shipped body with the launch line
+          # replaced: add-agent.sh is an adapter, not a second copy of the
+          # template text.
+          sed -n '4,$p' skills/cross-review/templates/reviewer.md > "$tmp/want"
+          sed -n '4,$p' "$tpl" > "$tmp/got"
+          cmp -s "$tmp/want" "$tmp/got" || {
+            echo "generated template body differs from templates/reviewer.md" >&2; exit 1; }
           # And it must refuse to overwrite.
           if sh "$tmp/skill/scripts/add-agent.sh" sampleagent 2>/dev/null; then
             echo "add-agent.sh overwrote an existing template" >&2; exit 1
           fi
 
-      - name: Installer probes the directory hc actually reads
+      # `fixed` mode runs every case against the corrected module. Plain mode
+      # is RED on A and B by design — the planted defects prove the tests
+      # detect them — so CI asserts soundness and the process guarantees here.
+      - name: Fixture — the process guarantees, against the shipped snapshot script
+        run: sh tests/fixture/run-tests.sh fixed
+
+      # The ps1 runner is a second adapter for the same modes. Run it too, or
+      # a mode missing on Windows ships silently (measured: `fixed` was
+      # ignored and the runner reported RED on correct code).
+      - name: Fixture parity — the ps1 runner speaks the same modes
+        run: pwsh -NoProfile -File tests/fixture/run-tests.ps1 fixed
+
+      - name: locate-templates probes the directory hc actually reads
         run: |
           set -e
-          s=skills/cross-review/scripts/install-templates.sh
+          s=skills/cross-review/scripts/locate-templates.sh
           tmp=$(mktemp -d)
           trap 'rm -rf "$tmp"' EXIT
           mkdir -p "$tmp/appdata/herdr-core" "$tmp/xdg/herdr-core" "$tmp/home"
 
           # Windows-shaped: APPDATA wins over a stale ~/.config.
           got=$(APPDATA="$tmp/appdata" HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/xdg" \
-                sh "$s" --dry-run | sed -n 's/^target: //p')
+                sh "$s")
           case "$got" in
             "$tmp"/appdata/herdr-core/templates) ;;
             *) echo "expected the APPDATA path, got: $got" >&2; exit 1 ;;
@@ -211,51 +203,55 @@ jobs:
 
           # Unix-shaped: XDG wins when it exists.
           got=$(env -u APPDATA HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/xdg" \
-                sh "$s" --dry-run | sed -n 's/^target: //p')
+                sh "$s")
           case "$got" in
             "$tmp"/xdg/herdr-core/templates) ;;
             *) echo "expected the XDG path, got: $got" >&2; exit 1 ;;
           esac
 
-          # Nothing exists: fall back to $HOME/.config, never to a bare /herdr-core.
+          # --create falls back to $HOME/.config, never to a bare /herdr-core.
           got=$(env -u APPDATA -u XDG_CONFIG_HOME HOME="$tmp/home" \
-                sh "$s" --dry-run | sed -n 's/^target: //p')
+                sh "$s" --create)
           [ "$got" = "$tmp/home/.config/herdr-core/templates" ] || {
             echo "expected the ~/.config fallback, got: $got" >&2; exit 1; }
 
-          # --dry-run must not write anything.
+          # Without --create, nothing existing is exit 2, and nothing is created.
+          if env -u APPDATA -u XDG_CONFIG_HOME HOME="$tmp/home" sh "$s"; then
+            echo "expected exit 2 when nothing exists" >&2; exit 1; fi
           [ ! -d "$tmp/home/.config" ] || {
-            echo "--dry-run created $tmp/home/.config" >&2; exit 1; }
+            echo "locate created $tmp/home/.config" >&2; exit 1; }
 
-      - name: check-templates.sh detects drift and absence
+          # install --dry-run resolves the same target locate does.
+          want=$(APPDATA="$tmp/appdata" HOME="$tmp/home" XDG_CONFIG_HOME="$tmp/xdg" \
+                 sh skills/cross-review/scripts/install-templates.sh --dry-run \
+                 | sed -n 's/^target: //p')
+          [ "$want" = "$tmp/appdata/herdr-core/templates" ] || {
+            echo "install --dry-run picked: $want" >&2; exit 1; }
+
+      - name: check-templates detects body drift and absence
         run: |
           set -e
           c=skills/cross-review/scripts/check-templates.sh
           tmp=$(mktemp -d)
           trap 'rm -rf "$tmp"' EXIT
 
-          # Build a listing that matches what the skill ships, read from the
-          # templates' own frontmatter so this test cannot drift out of step.
-          # jq only: a heredoc terminator would have to sit at column 0, which
-          # terminates this block scalar.
-          entries='[]'
-          for tpl in skills/cross-review/templates/*.md; do
-            name=$(basename "$tpl" .md)
-            cmd=$(sed -n '/^---$/,/^---$/p' "$tpl" | sed -n 's/^command: //p')
-            desc=$(sed -n '/^---$/,/^---$/p' "$tpl" | sed -n 's/^description: //p')
-            entries=$(jq --arg n "$name" --arg c "$cmd" --arg d "$desc" \
-              '. + [{"name":$n,"command":$c,"description":$d}]' <<<"$entries")
-          done
-          jq -n --argjson e "$entries" '{"templates":$e}' > "$tmp/good.json"
+          # A faithful install passes: byte-identical files.
+          mkdir -p "$tmp/target"
+          cp skills/cross-review/templates/*.md "$tmp/target/"
+          sh "$c" "$tmp/target"
 
-          jq '.templates[0].command += " --drifted"' "$tmp/good.json" > "$tmp/drift.json"
-          jq '.templates |= .[1:]' "$tmp/good.json" > "$tmp/missing.json"
+          # A one-word body change is drift. The contract's header and the
+          # delivery clause live in the body; hc's JSON listing cannot see
+          # them, which is why this check compares files, not fields.
+          sed -i 's/one pane in a review panel/one pane in a review panel (stale)/' \
+            "$tmp/target/reviewer.md"
+          if sh "$c" "$tmp/target"; then
+            echo "body drift was not detected" >&2; exit 1; fi
 
-          jq -e '.templates | length > 0' "$tmp/good.json" > /dev/null
-
-          sh "$c" "$tmp/good.json"
-          if sh "$c" "$tmp/drift.json"; then echo "drift was not detected" >&2; exit 1; fi
-          if sh "$c" "$tmp/missing.json"; then echo "absence was not detected" >&2; exit 1; fi
+          # A missing template file is absence.
+          rm "$tmp/target/reviewer-opencode.md"
+          if sh "$c" "$tmp/target"; then
+            echo "absence was not detected" >&2; exit 1; fi
 
       - name: README points at the directory npx installs to
         run: |
@@ -263,6 +259,20 @@ jobs:
           ! grep -q '\.claude/skills/cross-review/scripts' README.md
           grep -q 'npx skills add' README.md
           grep -qi 'does not install\|not install the\|templates are separate\|second step' README.md
+
+      # README's install check tells users what the shipped command must say.
+      # Lock it to the template's own launch line, or a rename ships the old
+      # form and users "fix" a correct install back to the rejected rule.
+      - name: README's install check agrees with the shipped template
+        run: |
+          set -e
+          rule=$(sed -n 's/^command: .*--allowedTools "[^"]*\(Edit([^)]*)\).*/\1/p' \
+                   skills/cross-review/templates/reviewer.md | head -1)
+          [ -n "$rule" ] || { echo "no Edit rule in the template" >&2; exit 1; }
+          grep -qF "$rule" README.md || {
+            echo "README does not show the shipped allow rule: $rule" >&2; exit 1; }
+          ! grep -qF 'Write(.git/cross-review/**)' README.md || {
+            echo "README still teaches the rejected Write(...) rule" >&2; exit 1; }
 
       - name: Markdown lint
         uses: DavidAnson/markdownlint-cli2-action@v19

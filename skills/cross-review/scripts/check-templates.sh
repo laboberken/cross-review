@@ -1,17 +1,27 @@
 #!/usr/bin/env sh
-# Verify the installed reviewer templates match the ones this skill ships.
+# Verify the installed reviewer templates match the ones this skill ships,
+# byte for byte — frontmatter and body.
 #
 # Why this exists: a v1 template satisfies "hc templates lists reviewer", so
-# L3 preflight passed while reviewers wrote findings under .review/ instead of
-# <git-dir>/cross-review/. That broke the no-trace guarantee silently. This
-# script compares what hc actually has against what the skill carries.
+# L3 preflight passed while reviewers wrote findings under .review/ instead
+# of <git-dir>/cross-review/. And hc's own listing cannot see the body:
+# measured, `hc templates --json` exposes only name, command and
+# description, so a frontmatter-only check missed every body drift — a
+# template carrying an old finding format or an old delivery command passed.
+# This script compares the installed files against the shipped ones
+# directly, so every byte is guarded.
 #
-#   sh scripts/check-templates.sh                 # ask hc
-#   sh scripts/check-templates.sh dump.json       # check a saved listing
+#   sh scripts/check-templates.sh                 # locate the install and check it
+#   sh scripts/check-templates.sh <DIR>           # check DIR as if it were the install
 #
-# Exit 0 = every shipped template is installed and matches.
-# Exit 1 = a template is missing, or its command/description has drifted.
-# Exit 2 = cannot run (no hc and no JSON argument, or unreadable JSON).
+# The default mode asks locate-templates.sh where hc reads, then proves hc
+# actually lists every shipped template — a copy hc cannot see is the defect
+# that started this script, wearing a new coat. With a DIR argument the
+# check is purely on-disk, so CI can exercise it without hc.
+#
+# Exit 0 = every shipped template is installed and byte-identical.
+# Exit 1 = a template is missing or its contents drifted.
+# Exit 2 = cannot run (no install location, no hc, or unusable DIR).
 #
 # POSIX sh only: this runs under dash on CI images, which has no arrays.
 
@@ -20,57 +30,51 @@ set -eu
 here=$(cd "$(dirname "$0")" && pwd -P)
 source_dir="$here/../templates"
 
-json_file="${1:-}"
-if [ -n "$json_file" ]; then
-  if [ ! -r "$json_file" ]; then
-    echo "cannot read: $json_file" >&2
+if [ $# -gt 1 ]; then
+  echo "usage: check-templates.sh [DIR]" >&2
+  exit 2
+fi
+
+if [ $# -eq 1 ]; then
+  target=$1
+  if [ ! -d "$target" ]; then
+    echo "not a directory: $target" >&2
     exit 2
   fi
-  json=$(cat "$json_file")
 else
+  target=$(sh "$here/locate-templates.sh") || {
+    echo "cannot locate the installed templates" >&2
+    echo "  reinstall: sh $here/install-templates.sh" >&2
+    exit 2
+  }
+
+  # hc must list every shipped template. Files matching on disk in a
+  # directory hc does not read are the v1 defect in a new coat.
   if ! command -v hc >/dev/null 2>&1; then
-    echo "no hc on PATH and no JSON argument given" >&2
+    echo "no hc on PATH, so hc's own view cannot be checked" >&2
     exit 2
   fi
   if ! json=$(hc templates --json 2>/dev/null); then
     echo "hc templates --json failed" >&2
     exit 2
   fi
+  unseen=""
+  for tpl in "$source_dir"/*.md; do
+    [ -e "$tpl" ] || continue
+    name=$(basename "$tpl" .md)
+    if printf '%s' "$json" | grep -q "\"name\"[[:space:]]*:[[:space:]]*\"$name\""; then
+      :
+    else
+      unseen="$unseen $name"
+    fi
+  done
+  if [ -n "$unseen" ]; then
+    echo "TEMPLATE CHECK FAILED - hc cannot see:$unseen" >&2
+    echo "  hc reads: $target" >&2
+    echo "  reinstall: sh $here/install-templates.sh" >&2
+    exit 1
+  fi
 fi
-
-# Pull one field for one template out of the listing. A narrow parse: the
-# listing is a flat array of objects with string fields, and jq is not a
-# dependency this script wants to take on.
-field_of() {
-  printf '%s' "$json" | python -c '
-import json, sys
-want_name, want_key = sys.argv[1], sys.argv[2]
-try:
-    data = json.load(sys.stdin)
-except ValueError:
-    sys.exit(0)
-for entry in data.get("templates", []):
-    if entry.get("name") == want_name:
-        print(entry.get(want_key, ""))
-        break
-' "$1" "$2" 2>/dev/null || true
-}
-
-# The same field, read from a shipped template's frontmatter.
-shipped_field_of() {
-  python - "$1" "$2" <<'PY' 2>/dev/null || true
-import re, sys
-path, key = sys.argv[1], sys.argv[2]
-text = open(path, encoding="utf-8").read()
-m = re.search(r"^---\s*$(.*?)^---\s*$", text, re.S | re.M)
-if not m:
-    sys.exit(0)
-for line in m.group(1).splitlines():
-    if line.startswith(key + ":"):
-        print(line.split(":", 1)[1].strip())
-        break
-PY
-}
 
 missing=""
 drifted=""
@@ -80,30 +84,24 @@ checked=0
 for tpl in "$source_dir"/*.md; do
   [ -e "$tpl" ] || continue
   name=$(basename "$tpl" .md)
+  installed="$target/$(basename "$tpl")"
   checked=$((checked + 1))
-
-  installed_command=$(field_of "$name" command)
-  if [ -z "$installed_command" ]; then
+  if [ ! -e "$installed" ]; then
     missing="$missing $name"
     continue
   fi
-
-  for key in command description; do
-    want=$(shipped_field_of "$tpl" "$key")
-    [ -z "$want" ] && continue
-    got=$(field_of "$name" "$key")
-    if [ "$want" != "$got" ]; then
-      drifted="$drifted $name($key)"
-      detail="$detail
-  $name $key
-    installed: $got
-    shipped:   $want"
-    fi
-  done
+  if ! cmp -s "$tpl" "$installed"; then
+    drifted="$drifted $name"
+    diff_line=$(cmp "$tpl" "$installed" 2>&1 || true)
+    detail="$detail
+  $name
+    $diff_line"
+  fi
 done
 
 if [ -n "$missing" ]; then
   echo "TEMPLATE CHECK FAILED - not installed:$missing" >&2
+  echo "  reading: $target" >&2
   echo "  reinstall: sh $here/install-templates.sh" >&2
   exit 1
 fi
@@ -116,4 +114,4 @@ if [ -n "$drifted" ]; then
   exit 1
 fi
 
-echo "template check passed ($checked template(s))"
+echo "template check passed ($checked template(s) byte-identical)"

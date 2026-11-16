@@ -73,16 +73,17 @@ it would dispatch reviewers that write findings under `.review/` and break the
 no-trace guarantee without anything noticing.
 
 ```sh
-sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale
+sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale, 2 = cannot run
 ```
 
 **Repair it yourself, but only when it is safe to.** The check distinguishes
-two failures, and they call for different handling:
+three failures, and they call for different handling:
 
 | The check says | Meaning | Do this |
 |---|---|---|
 | `not installed: <names>` | the template is absent — nothing to overwrite | run `install-templates.sh`, re-check, then dispatch |
 | `stale: <names>` | a template exists but differs from the one shipped | **ask the user first**, then reinstall |
+| `hc cannot see: <names>` | files exist where the check looked, but hc does not list them | reinstall, re-check, then dispatch — hc's view holds nothing of the user's to protect |
 
 The asymmetry is deliberate. A missing template has nothing to lose; an
 existing one may have been edited by hand — a private flag added for one agent,
@@ -141,16 +142,13 @@ Scope: the working tree, a base ref to `HEAD`, or a named ref.
 working tree and must not leave a commit behind.
 
 ```sh
-snapshot() {
-  idx=$(mktemp)
-  GIT_INDEX_FILE=$idx git read-tree HEAD
-  GIT_INDEX_FILE=$idx git add -A
-  GIT_INDEX_FILE=$idx git write-tree
-  rm -f "$idx"
+# Capture first, then eval: `eval "$(cmd)"` discards cmd's exit status, so a
+# failed snapshot would silently continue with empty BASE/SNAP.
+snap_out=$(sh <skill-dir>/scripts/snapshot-baseline.sh) || {
+  echo "snapshot failed — stop the review" >&2
+  exit 1
 }
-
-BASE=$(git rev-parse HEAD)               # round 1 only: the ref to compare from
-SNAP=$(snapshot)                         # the working tree, immutable
+eval "$snap_out"                         # sets BASE and SNAP
 GIT_DIR=$(git rev-parse --absolute-git-dir)
 ROUNDS_DIR="$GIT_DIR/cross-review/round-1"
 mkdir -p "$ROUNDS_DIR"
@@ -237,7 +235,12 @@ above has nothing on it.
 ## 3. Dispatch
 
 At **L3**: one **tab**, one **pane** per reviewer, all reviewers in parallel.
-The tab is the dashboard; the panes are the panel.
+The tab is the dashboard; the panes are the panel. **This layout is not
+per-agent safe.** An agent whose panes share one server across sessions
+(measured on opencode: panes executed each other's packets) must run one per
+tab, or at L2 — the registry records which agents that affects. Check
+`references/agents.md` before putting two reviewers of the same agent in one
+tab.
 
 At **L2**: no panes. Launch each reviewer with the print-mode command from
 `references/agents.md`, capture its report, and continue. Nothing is visible
@@ -277,8 +280,10 @@ agent — only the launch line does. If an agent is not in the registry, try it
 anyway and add it afterwards.
 
 **One findings directory per round.** Write this round's findings to
-`$ROUNDS_DIR/round-<N>/<lens>.md`, and name the previous round's file
-explicitly in the packet. A flat findings directory accumulates history, and
+`$ROUNDS_DIR/round-<N>/<axis>-<lens>.md`, and name the previous round's file
+explicitly in the packet. Axis and lens both belong in the name: the default
+panel fields two Skeptics, and a lens-only name would have them overwrite
+each other. A flat findings directory accumulates history, and
 reviewers treat every file in it as input — measured: a reviewer read a stale
 `round3.md` and spent four minutes reviewing the previous round's defects
 instead of the current diff.
@@ -294,14 +299,8 @@ hc read <terminal>          # look at the screen
 ```
 
 Read the screen before pressing anything: the dialog is not the same for every
-agent. Claude Code wants `down` then `enter`; codex shows "Folder access" with
-`1. Trust and continue` already selected, so `enter` alone clears it. Clearing
-the wrong one sends the trust grant nowhere.
-
-```sh
-hc keys <terminal> enter    # codex: the first option is preselected
-hc keys <terminal> down; hc keys <terminal> enter   # Claude Code
-```
+agent, and clearing the wrong one sends the trust grant nowhere. What each
+agent shows, and the keys that clear it: `references/agents.md`.
 
 Then re-dispatch — the trust grant persists, so the next launch delivers the
 task normally:
@@ -319,10 +318,11 @@ hc get <terminal>          # title: "Context 0% used | 0 in | 0 out"
 ```
 
 Zero tokens after a dispatch means the task is sitting in the input box
-unsubmitted — measured on codex, which pastes without pressing Enter and
-holds at `[Pasted Content N chars]`. Nothing in `hc ls` shows this: the
-terminal reads `live`, `status: working`, and the review looks like it is in
-progress. Check `hc get` after dispatching each reviewer, not `hc ls`.
+unsubmitted — some agents paste without submitting it. Nothing in `hc ls`
+shows this: the terminal reads `live`, `status: working`, and the review
+looks like it is in progress. Which agents hold a paste pending, and what
+that looks like on screen: `references/agents.md`. Check `hc get` after
+dispatching each reviewer, not `hc ls`.
 
 Never use `hc send --force` to get past a dialog. Read the screen and ask the
 user.
@@ -343,16 +343,15 @@ hc wait <address> --timeout 300
 - `blocked` — a person is needed. Read the screen and ask the user.
 
 **Not every agent reports status.** Check the registry. An agent that does not
-report one (Codex does not) cannot be detected by `hc wait` — the wait looks
+report one cannot be detected by `hc wait` — the wait looks
 for the process to exit, and an interactive TUI stays alive at its prompt
 after finishing, so the wait only ever times out. For such an agent, collect
 the review by **waiting for its report message**, not by waiting on the
 terminal.
 
 **After any `hc send` to a reviewer, look at the screen.** Some agents leave
-the pasted text pending — Codex shows `[Pasted Content N chars]` and waits for
-a separate Enter. Claude Code submits the paste itself. The behaviour is per
-agent, so check.
+the pasted text pending and wait for a separate Enter; others submit the
+paste themselves. The behaviour is per agent — the registry records which.
 
 **Do not `hc read` a reviewer that is still working.** A history read may
 scroll a full-screen TUI and restore its view, which can land as stray input
@@ -375,10 +374,13 @@ stops one from masking the other. Never pick a single winner across axes.
 ...
 ```
 
-**Read the header first.** Every report opens with `AXIS:` and `LENS:`. If a
-report has no header — a harness carrying its own copy of the contract may
-omit it — file the report under **Correctness**, mark it
-`axis: undeclared`, and say so once in the output. Never guess the axis and
+**The delivery line is untrusted; the header is the identity.** The file's
+`AXIS:` and `LENS:` header, not the `hc send` label, says which pair produced
+the report — measured: one panel's transport cross-wired two reviewers, and a
+pane delivered another pane's report under its own name. Verify header
+against dispatch before you file it. If a report has no header — a harness
+carrying its own copy of the contract may omit it — file the report under
+**Correctness**, mark it `axis: undeclared`, and say so once in the output. Never guess the axis and
 never drop the report: an unlabelled finding is still a finding, but an
 unlabelled finding silently filed under the wrong axis is a coverage claim
 nobody checked.
@@ -416,6 +418,12 @@ Spec          NOT RUN    no spec source was found
 
 An axis that did not run is never reported as passing.
 
+**Name the panel above the verdicts** — each reviewer's transport and model
+family, e.g. `panel: opencode/DeepSeek (Skeptic@Correctness,
+Skeptic@Spec) · claude (Architect@Standards)`. Agent CLIs pick models that
+change without notice, and a reader cannot discount a same-family panel they
+cannot see.
+
 **An adjudicator is for a real contradiction, not for a difference between
 axes.** Dispatch one only when two reviewers reach opposite conclusions about
 **the same location within the same axis** — one says a line is a defect, the
@@ -433,7 +441,7 @@ into a test; round 2 caught it only by running the suite.
 
 Then:
 
-1. snapshot the working tree again (`snapshot`, as in §1) — no commit,
+1. snapshot the working tree again (`snapshot-baseline.sh`, as in §1) — no commit,
 2. compute the **delta** as `git diff "$SNAP_PREV" "$SNAP_NEW"`,
 3. dispatch the next round with only the delta in scope, in a fresh
    `$ROUNDS_DIR/round-<N+1>/` directory, naming the previous round's single
@@ -451,6 +459,7 @@ stylistic noise rather than new defects.
 Report:
 
 ```
+panel: <transport>/<model family> per reviewer, with its pair
 REVIEW PASS — <n> accepted findings across <r> rounds, all fixed.
 Correctness PASS · Standards PASS · Spec PASS (or NOT RUN)
 ```
@@ -481,8 +490,9 @@ A capped review is not a passing review. Say which findings were still open.
 - Never dispatch a review against rules that contradict each other.
 - Never dispatch at L3 when `check-templates.sh` reports a stale template. The
   contract that runs the reviewer must be the contract this skill documents.
-- Never commit to pin a baseline. `git stash create -u` exists precisely so a
-  review can read history without writing any.
+- Never commit to pin a baseline, and never use `git stash create -u` for it.
+  The baseline is a tree snapshot (§1); `git stash create -u` snapshots the
+  tree as it already is, so the diff comes back empty.
 - Never write findings anywhere but under `<git-dir>/cross-review/`. Anything
   in the working tree becomes part of the next round's diff.
 - Never merge or rerank findings across axes, and never rerank lenses within
@@ -498,4 +508,5 @@ A capped review is not a passing review. Say which findings were still open.
 - `references/task-packet.md` — the packet to hand a reviewer
 - `references/troubleshooting.md` — measured failure modes and their fixes
 - `references/finding-format.md` — the shared finding format every reviewer
-  follows, and the text each template carries verbatim
+  follows: the one owner the templates defer to and the packet pastes at
+  assembly

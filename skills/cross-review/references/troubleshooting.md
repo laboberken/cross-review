@@ -19,7 +19,8 @@ as input.
 
 **Fix.**
 
-- One directory per round: `<git-dir>/cross-review/round-<N>/<lens>.md`.
+- One directory per round:
+  `<git-dir>/cross-review/round-<N>/<axis>-<lens>.md`.
 - In the packet: *"Do not read any other file under `<ROUNDS_DIR>/` — files
   there belong to other rounds or other reviewers and are not part of your
   input."*
@@ -33,16 +34,13 @@ written anything, check what it has been reading before it finishes.
 **Symptom.** `hc run` returns `first_message.sent: false`, reason *"it never
 reported its status, so it may be showing a dialog"*.
 
-**Cause.** Claude Code's folder-trust dialog on a directory it has not seen.
-The reviewer sits on the dialog; nothing was sent.
+**Cause.** A startup dialog on a directory the agent has not seen — folder
+trust, measured on Claude Code and Codex. The reviewer sits on the dialog;
+nothing was sent.
 
-**Fix.**
-
-```sh
-hc read <terminal>                 # confirm it is the trust dialog
-hc keys <terminal> down            # move to "Yes, I trust this folder"
-hc keys <terminal> enter
-```
+**Fix.** Read the screen to confirm it is the dialog, then clear it the way
+`references/agents.md` records for that agent — the panel and the keys that
+clear it differ per agent.
 
 The grant persists, so re-dispatch and the task goes through:
 
@@ -71,6 +69,32 @@ result and confirm it is the terminal you dispatched. If it is not, wait again.
 ```sh
 hc wait t1v --timeout 300
 ```
+
+## Two reviewers worked on the same packet
+
+**Symptom.** A reviewer delivers a report whose `hc send` label names a
+*different* reviewer, and the reviewer it was meant to be never wrote a file.
+
+**Measured.** Three opencode panes dispatched in one round (2026-11-16)
+shared one opencode server: their session titles continued each other's, one
+pane executed another pane's packet, and it delivered that report under its
+own terminal name. `hc get` showed the same two session titles on all three
+terminals.
+
+**Cause.** Session focus inside the shared opencode server, not packet
+assembly: each pane's `hc run` delivered `first_message.sent: true`. The
+transport mixed which session consumed which message.
+
+**Fix.**
+
+- For multiple opencode reviewers, run L2 print mode (`opencode run`): each
+  reviewer is its own process, nothing is shared.
+- If you must use panes, one reviewer per tab.
+- Whatever the transport, **verify the file's header against what you
+  dispatched** before filing — the header is the identity; the delivery label
+  is not. A cross-wired delivery that still produced a conforming report for
+  a split axis is a completed review of the wrong pair: re-dispatch the axis
+  that got nothing.
 
 ## The reviewer was interrupted
 
@@ -240,10 +264,9 @@ empty, on a tree that clearly has changes.
 so the diff is empty. `git diff <commit>` also drops untracked files, so a
 working-tree review misses new files even when the diff is not empty.
 
-**Fix.** Snapshot through a throwaway index and diff two trees:
-`GIT_INDEX_FILE=$tmp git read-tree HEAD`, `git add -A`, `git write-tree`, then
-`git diff <base> <snapshot>` for round 1 and `git diff <snap N>` for later
-rounds. Verify the round-1 diff with `--stat` before dispatching.
+**Fix.** Snapshot through a throwaway index and diff two trees — the skill
+ships the mechanism as `scripts/snapshot-baseline.sh` (SKILL.md §1). Verify
+the round-1 diff with `--stat` before dispatching.
 
 ## The reviewer claims a finding is "pre-existing"
 

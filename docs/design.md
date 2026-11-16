@@ -67,6 +67,10 @@ installable. v2 replaces v1 in place — no parallel branch, no rename.
 skill would duplicate the packet and ruling logic, which is exactly the
 failure v2 is removing elsewhere.
 
+**Amended 2026-11-16 (#12).** `review-agent` folded into `cross-review` as
+`references/finding-format.md` — one skill, one contract file. D20
+continues the single-owner direction for everything the contract implies.
+
 **Rejected.** Splitting per transport (`cross-review-herdr`,
 `cross-review-ci`): clean boundaries, but the protocol would be copied three
 times and drift.
@@ -185,7 +189,8 @@ the noise behind.
 ### D9 — Findings live inside `.git/`
 
 `<git-dir>/cross-review/round-<N>/<lens>.md`, located by
-`git rev-parse --git-dir`.
+`git rev-parse --git-dir`. **Amended (D26):** the file is
+`<axis>-<lens>.md`.
 
 **Why.** Nothing appears in `git status`, no repo needs a `.gitignore` entry,
 and a review leaves nothing behind. Verified that `.review/`-style artefacts
@@ -307,6 +312,151 @@ exist.
 **Why.** The daily driver may change. A review tool that breaks when the
 planning tool changes is a liability.
 
+## Decisions from the first architecture review
+
+Added 2026-11-16, after an architecture walk found the same failure mode in
+three places: protocol facts restated at every seam instead of owned once.
+
+### D20 — The Contract has one owner
+
+`references/finding-format.md` is the only place the finding format is
+defined — the single contract file D1's amendment (#12) created, which this
+decision completes. The packet derives its FINDINGS section by pasting that
+file's contract section verbatim at assembly time — the packet still stands
+alone, but the copy is mechanical, so the contract cannot drift between
+owner and packet. The templates carry standing isolation rules only; format
+and delivery are not restated in them, and CI rejects a template that
+restates the format — the inverse of #12's verbatim-paste lock, which this
+decision replaces.
+
+**Why.** The format had more than one owner. Before #12 it was restated in
+five places, and D17's header was missing from all three templates. By the
+rebase base (#12) the whole format had been pasted into every template
+verbatim — the copies were equal, but every format change was a five-file
+manual edit under a lock that only compared the pasted block, and the
+delivery command was doubled: the template and the packet carried two
+contradictory commands both labelled "exact".
+
+**Rejected.** Generated templates (one body, three stamped variants): a
+build step for three files, and hc still reads static files. **Rejected.**
+Keep full bodies and rely on the staleness check alone: 290 lines of
+duplicate text stay under sync-by-hand.
+
+### D21 — Template staleness is checked on disk
+
+`check-templates.sh` byte-compares the installed template files against the
+shipped ones (cmp). hc's listing is kept only as the visibility proof — a
+copy hc cannot see is still reported. `locate-templates.sh` owns the
+candidate order (APPDATA → XDG → ~/.config) shared by install and check, so
+the check verifies the directory the install wrote.
+
+**Why.** Measured: `hc templates --json` exposes only name, command and
+description, so a frontmatter-only check was structurally blind to the
+body — where the format, the spec-quote rule and the delivery clause live.
+
+**Rejected.** A body hash in frontmatter: hc would still have to pass the
+field through, and it does not. **Rejected.** A second probe in
+check-templates: the candidate order would exist twice, and the check could
+verify a directory the install did not write.
+
+**Amended 2026-11-16 (round 2).** The install's own read-back — a second
+`hc templates --json` name-grep — now delegates to `check-templates.sh`, so
+the hc-visibility probe has one home too; the same argument D21 made for the
+directory order applies to it.
+
+### D22 — The delivery clause belongs to the packet
+
+One exact delivery command per packet kind, defined in `task-packet.md`.
+Templates carry none. **Amended (D26):** the tag is `<AXIS>-<LENS> DONE`.
+
+**Why.** The template and the packet shipped two different commands, both
+instructing the reviewer to use it "exactly". Delivery is transport, not
+contract; the packet is the thing that knows the round, the parent address
+and the findings path.
+
+**Rejected.** Unify on the template's `REVIEW DONE:` wording: the packet's
+round-2 variant was already parameterised by lens and round; the template's
+was not.
+
+### D23 — The baseline snapshot is a shipped script
+
+`scripts/snapshot-baseline.sh` implements the throwaway-index snapshot
+(D8's mechanism) and prints `BASE=` and `SNAP=`. SKILL.md states the
+invariants and calls the script; the fixture's Case C invokes it, so CI
+tests the artifact a reviewer runs.
+
+**Why.** The mechanism existed in six representations (SKILL.md twice, the
+command file, troubleshooting, this document, and a Python
+re-implementation inside the fixture), one of which had drifted into
+self-contradiction: the Never list attributed the snapshot's purpose to
+`git stash create -u`, the mechanism §1 forbids.
+
+**Rejected.** Make the script manage ROUNDS_DIR too: baseline-file writing
+is controller orchestration, not snapshotting; the script's interface stays
+two lines.
+
+### D24 — The fixture is tracked, and CI stops asserting wording
+
+The fixture lives in `tests/fixture/` — outside `skills/`, so junction
+mirrors and `npx skills add` do not carry it — and CI runs it in `fixed`
+mode (every case against the corrected module). Prose greps that assert
+sentence wording (`did not converge`, `Spec axis: NOT RUN`, the L1/L2/L3
+tokens) are gone. Kept: the Contract strings (D17's byte-identity), the
+twelve-smell inventory and its two binding rules (D4), the install-path
+greps.
+
+**Why.** The fixture proving the process guarantees was gitignored —
+cloners got no tests — while CI asserted prose whose meaning could change
+silently and whose wording could break it noisily.
+
+**Rejected.** Put the fixture under `skills/cross-review/tests/`: the
+junction mirror would copy tests into `~/.codex/skills` and `npx skills
+add` would install them to users.
+
+### D25 — Per-agent Transport facts have one home
+
+`references/agents.md` owns every per-agent fact: launch line, prompt mode,
+status reporting, dialogs, paste behaviour, friction. SKILL.md §4–§5 and
+`troubleshooting.md` keep the transport-agnostic rules and point at the
+registry for the specifics. The behaviour-matrix example is folded into the
+registry's measured notes and deleted.
+
+**Why.** The most volatile facts in the toolkit (agent CLIs change
+constantly) had four homes with cross-references already stale in both
+directions — one example claimed the registry lacked a dialog the registry
+had recorded.
+
+**Rejected.** Keep the matrix as a dated measurement log: a second registry
+by another name, still drifting.
+
+### D26 — Findings are named and delivered by axis and lens
+
+The findings file is `<axis>-<lens>.md` and the delivery tag is
+`<AXIS>-<LENS> DONE`.
+
+**Why.** The default panel fields two Skeptics (`Skeptic@Correctness`,
+`Skeptic@Spec`). A `<lens>.md` path has them overwrite each other, and a
+`<LENS> DONE` tag makes two deliveries indistinguishable. Found by dogfooding
+the protocol against itself, not by a theoretical review.
+
+**Rejected.** `<lens>.md` plus a per-panel suffix the controller invents:
+implicit, easy to forget, and the protocol would stop being mechanical.
+
+### D27 — The delivery line is untrusted; the header is the identity
+
+The controller verifies each report's `AXIS:`/`LENS:` header against what it
+dispatched, and the final report names the panel's composition — each
+reviewer's transport and model family.
+
+**Why.** Measured: one panel's transport cross-wired two reviewers and a pane
+delivered another pane's report under its own name (agents.md, opencode
+entry; troubleshooting). The header survived the cross-wiring; the delivery
+label did not. And agent CLIs pick models quietly, so a reader cannot
+discount a same-family panel they cannot see.
+
+**Rejected.** Trusting delivery labels: the label is transport data, and the
+transport is the thing that failed.
+
 ## Known limits
 
 - The read-only contract is an instruction plus a scoped allow-list, not a
@@ -323,7 +473,11 @@ planning tool changes is a liability.
 ## Verification
 
 One fixture, three cases, standard library only (this machine has Python
-3.15.1 and no pytest):
+3.15.1 and no pytest), tracked at `tests/fixture/` and run by CI in `fixed`
+mode (every case against the corrected module; plain mode is RED on A and B
+by design — the planted defects prove the tests detect them). Case C
+exercises the shipped `scripts/snapshot-baseline.sh`, so CI tests the
+artifact a reviewer runs, not a re-implementation of it:
 
 | Case | Asserts | v1 | v2 |
 |---|---|---|---|

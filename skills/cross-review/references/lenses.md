@@ -73,8 +73,9 @@ The prompt is six ingredients, in this order:
 
 Plus the standing instructions in `finding-format.md`: the finding format, the
 flagging bar, the "every number must come from a command's output" rule, and
-the "check the premise you were given" rule. Each template carries that text
-verbatim, and CI keeps the copies identical.
+the "check the premise you were given" rule. The packet pastes that text at
+assembly time; the templates defer to it, and CI rejects a template that
+restates it.
 
 ## The intent statement
 

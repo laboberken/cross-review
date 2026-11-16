@@ -74,12 +74,14 @@ nothing. `--dry-run` prints the paths it would use without writing.
 Confirm the result yourself:
 
 ```bash
-hc templates     # reviewer's command must say Write(.git/cross-review/**)
+hc templates     # reviewer's command must say Edit(.git/cross-review/**)
 ```
 
-If it still says `Write(.review/**)`, you have a template from v1. Reinstall
-with this repository's script; the skill's own preflight will refuse to
-dispatch against a stale contract.
+A `Write(...)` rule looks right but is not: the Claude Code CLI ignores
+`Write(...)` allow-rules and needs `Edit(...)`, which covers every
+file-editing tool. If the listing still says `Write(.review/**)`, you have a
+template from v1. Reinstall with this repository's script; the skill's own
+preflight will refuse to dispatch against a stale contract.
 
 Or install by hand. Claude Code reads `~/.claude/skills` natively; opencode
 reads it as a compatibility source; Codex reads `~/.codex/skills` only, so the

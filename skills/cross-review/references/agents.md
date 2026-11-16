@@ -64,16 +64,22 @@ back, so the controller reads the findings file after the process exits.
   contains a bash shim named `claude`, which is what resolves when the command
   runs through `sh` (as templates do). Both work.
 - **print**: `claude -p "<PACKET>"` with `--allowedTools` scoped as below. Use
-  at L2 only. Do **not** use it at L3 — it never reports status.
+  at L2 only. Do **not** use it at L3 — it never reports status. Print mode
+  must also allow the read and run tools the packet needs (`Read Grep Glob
+  Bash`): allowed only to edit, the run stalls with nothing to approve
+  (measured: 14 minutes, no output, no findings file).
 - **prompt**: `argv`. Verified.
 - **status**: reports `app: "claude-code"` with `idle`/`working`/`done`.
   **Verified** — `hc wait` captures a turn boundary reliably.
 - **dialogs**: **folder trust** on a directory Claude Code has not seen before.
   It blocks the first message and `hc run` reports `first_message.sent:
-  false`. Clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
+  false`. The preselected option is "No, exit", which is why `down` comes
+  first: clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
   persists, so re-dispatch and the task goes through.
-- **permissions**: scope the write access, e.g.
-  `--allowedTools "Read Grep Glob Bash Write(<git-dir>/cross-review/**)"`.
+- **permissions**: scope the write access with an **Edit** rule, e.g.
+  `--allowedTools "Read Grep Glob Bash Edit(<git-dir>/cross-review/**)"`.
+  `Write(<path>)` is not matched by file permission checks (measured: the CLI
+  warns and ignores it); Edit rules cover every file-editing tool.
   Claude Code will not prompt for allowed tools, so a reviewer never stalls on
   a permission prompt.
 - **notes**: `--permission-mode plan` makes it read-only but also prevents it
@@ -124,7 +130,11 @@ back, so the controller reads the findings file after the process exits.
   in `finding-format.md`, which is what makes the two interchangeable. That is
   also why the header is tolerated when absent: Codex's copy predates it and
   cannot be updated. It also loads the shared `herdr-core` skill and used it
-  for the handoff, unprompted.
+  for the handoff, unprompted. Measured, unprompted: *"I'm using the
+  review-agent skill for the defect-first review and herdr-core for the
+  required final handoff."* It honoured the read-only contract — *"I did not
+  inspect any review artifact contents"* — and still caught an out-of-scope
+  artifact in the diff from `git diff` alone.
 - **skills reach**: Codex does **not** read `~/.claude/skills`. It reads
   `~/.codex/skills` only, so the shared skill repository is mirrored there
   with directory junctions. Run `sync-codex-skills.ps1` after adding,
@@ -145,6 +155,14 @@ back, so the controller reads the findings file after the process exits.
   it submits its own paste, so it needs no follow-up key.
 - **notes**: the binary also emits an OSC title, so the terminal title in the
   Herdr window shows the session title.
+- **parallel panes**: **measured 2026-11-16 — do not run two opencode
+  reviewers as panes in one round.** Three parallel L3 panes shared one
+  opencode server; their session titles continued each other's, and one pane
+  executed a *different* pane's packet and delivered it under that pane's
+  label (`hc get` showed both session titles on all three terminals). Prefer
+  one reviewer per tab, or run opencode reviewers in L2 print mode
+  (`opencode run`) where each is its own process. Always verify a report's
+  header against what was dispatched before filing it.
 
 ### dsh-tui (DeepSeek Harness TUI launcher)
 
@@ -184,7 +202,7 @@ If an agent is not registered, try it anyway — the registry records what is
 known, not what is allowed:
 
 ```sh
-hc run --bg --json --name rev-<lens> --cwd "$REPO" <command> "<PACKET>"
+hc run --bg --json --name rev-<axis>-<lens> --cwd "$REPO" <command> "<PACKET>"
 ```
 
 Then check two things:

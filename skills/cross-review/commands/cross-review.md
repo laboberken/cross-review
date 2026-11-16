@@ -4,48 +4,15 @@ agent: build
 ---
 
 Use the `cross-review` skill to run a cross-model adversarial review of the
-current change.
+current change. Follow `SKILL.md` in full — this command only parses the
+arguments.
 
 Arguments: $ARGUMENTS
 
-Rules:
-
 - Parse the remaining natural-language text as the scope. Default scope is
-  `git diff HEAD` (staged + unstaged uncommitted changes). `--quick` runs one
-  `Skeptic@Correctness` reviewer on the cheapest available transport.
-- State the change's intent before dispatching any reviewer, and name what is
-  out of scope for it.
-- Pin the baseline by snapshotting the working tree through a throwaway index
-  (`read-tree HEAD`, `add -A`, `write-tree`), so untracked files are included
-  and nothing is committed. Never use `git stash create -u`; never commit.
-- Read `references/agents.md` and pick a reviewer whose model family differs
-  from yours. Prefer the lowest-friction agent available. If only a
-  same-family reviewer is available, say so and record it in the report rather
-  than silently proceeding.
-- Detect the transport first: L3 panes inside Herdr, L2 print mode
-  (`codex exec` / `opencode run` / `claude -p`), L1 a same-harness subagent
-  announced as same-family. Report which rung ran.
-- At L3, dispatch each reviewer as its own terminal under `hc`, one pane per
-  reviewer in a single Herdr tab, and keep them visible. Wait by terminal
-  address, never by name. If a reviewer does not report status, collect its
-  review by waiting for the report message instead.
-- Assign each reviewer one axis and one lens as a pair; size the panel by risk
-  signals, not line count. Find a spec source before choosing pairs.
-- Present the report axis-first and lens-within. Do not rerank across axes and
-  do not merge lenses within an axis. Never report an axis that did not run as
-  passing. A report with no header is filed under Correctness and marked
-  `axis: undeclared`.
-- Deduplicate findings by `file:line` before ruling. Two reviewers at one
-  location corroborate each other; the severity label is an opinion.
-- Apply your own judgment to each individual finding: accept, reject, or
-  defer, with a one-line reason. A review that never rejects anything is
-  rubber-stamping, not reviewing.
-- Re-derive every number in a finding before acting on it. Reviewers
-  fabricate plausible examples, and the author inherits them.
-- Fix the findings you accepted, re-pin the baseline, then re-review only the
-  delta. Stop when a round accepts nothing; cap the loop at 3 rounds and say
-  so explicitly if the cap is reached.
-- Never close, kill, or remove a reviewer's terminal or tab. The user closes
-  them so they can read the transcript.
-- If the repository's own rules contradict each other, stop and say so before
-  dispatching anyone.
+  `git diff HEAD` (staged + unstaged uncommitted changes).
+- `--quick` runs one `Skeptic@Correctness` reviewer on the cheapest available
+  transport.
+- Everything else — intent, baseline, transport, pairing, dispatch, ruling,
+  re-review, cap — is the skill's protocol, and `SKILL.md` owns it. Do not
+  restate it here.
