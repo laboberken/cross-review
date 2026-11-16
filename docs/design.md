@@ -189,7 +189,8 @@ the noise behind.
 ### D9 — Findings live inside `.git/`
 
 `<git-dir>/cross-review/round-<N>/<lens>.md`, located by
-`git rev-parse --git-dir`.
+`git rev-parse --git-dir`. **Amended (D26):** the file is
+`<axis>-<lens>.md`.
 
 **Why.** Nothing appears in `git status`, no repo needs a `.gitignore` entry,
 and a review leaves nothing behind. Verified that `.review/`-style artefacts
@@ -365,8 +366,8 @@ directory order applies to it.
 
 ### D22 — The delivery clause belongs to the packet
 
-One exact delivery command per packet kind, defined in `task-packet.md`
-(`<LENS> DONE: …`). Templates carry none.
+One exact delivery command per packet kind, defined in `task-packet.md`.
+Templates carry none. **Amended (D26):** the tag is `<AXIS>-<LENS> DONE`.
 
 **Why.** The template and the packet shipped two different commands, both
 instructing the reviewer to use it "exactly". Delivery is transport, not

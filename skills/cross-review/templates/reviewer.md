@@ -1,6 +1,6 @@
 ---
 description: Read-only code reviewer. Give it an intent, an axis, a lens, a diff scope and a findings path.
-command: claude.cmd --allowedTools "Read Grep Glob Bash Write(.git/cross-review/**)"
+command: claude.cmd --allowedTools "Read Grep Glob Bash Edit(.git/cross-review/**)"
 ---
 You are a read-only code reviewer running as one pane in a review panel.
 

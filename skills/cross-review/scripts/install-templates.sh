@@ -73,7 +73,10 @@ fi
 if ! check_out=$(sh "$here/check-templates.sh" 2>&1); then
   echo "$check_out" >&2
   echo "  copied into: $target" >&2
-  echo "  hc is reading somewhere else. Run 'hc templates' and compare." >&2
+  case "$check_out" in
+    *"hc cannot see"*)
+      echo "  hc is reading somewhere else. Run 'hc templates' and compare." >&2 ;;
+  esac
   exit 1
 fi
 

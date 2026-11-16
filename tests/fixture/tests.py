@@ -193,6 +193,21 @@ class CaseC_ProcessGuarantees(unittest.TestCase):
         self.assertEqual(out.returncode, 7, out.stderr)
         self.assertIn("SNAPSHOT-FAILED", out.stderr)
 
+    def test_skill_md_recipe_stays_capture_first(self):
+        """Tie the recipe test to the document, not only to a copied string.
+
+        Reverting SKILL.md to `eval "$(sh ...)"` would re-introduce the
+        swallowed failure while the test above stayed green; this assertion
+        turns that regression red.
+        """
+        skill_md = os.path.join(
+            HERE, os.pardir, os.pardir, "skills", "cross-review", "SKILL.md",
+        )
+        with open(skill_md, encoding="utf-8") as fh:
+            text = fh.read()
+        self.assertIn("snap_out=$(sh", text)
+        self.assertNotIn('eval "$(sh', text)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

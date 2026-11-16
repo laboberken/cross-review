@@ -64,7 +64,10 @@ back, so the controller reads the findings file after the process exits.
   contains a bash shim named `claude`, which is what resolves when the command
   runs through `sh` (as templates do). Both work.
 - **print**: `claude -p "<PACKET>"` with `--allowedTools` scoped as below. Use
-  at L2 only. Do **not** use it at L3 — it never reports status.
+  at L2 only. Do **not** use it at L3 — it never reports status. Print mode
+  must also allow the read and run tools the packet needs (`Read Grep Glob
+  Bash`): allowed only to edit, the run stalls with nothing to approve
+  (measured: 14 minutes, no output, no findings file).
 - **prompt**: `argv`. Verified.
 - **status**: reports `app: "claude-code"` with `idle`/`working`/`done`.
   **Verified** — `hc wait` captures a turn boundary reliably.
@@ -73,8 +76,10 @@ back, so the controller reads the findings file after the process exits.
   false`. The preselected option is "No, exit", which is why `down` comes
   first: clear it with `hc keys <t> down` then `hc keys <t> enter`; the grant
   persists, so re-dispatch and the task goes through.
-- **permissions**: scope the write access, e.g.
-  `--allowedTools "Read Grep Glob Bash Write(<git-dir>/cross-review/**)"`.
+- **permissions**: scope the write access with an **Edit** rule, e.g.
+  `--allowedTools "Read Grep Glob Bash Edit(<git-dir>/cross-review/**)"`.
+  `Write(<path>)` is not matched by file permission checks (measured: the CLI
+  warns and ignores it); Edit rules cover every file-editing tool.
   Claude Code will not prompt for allowed tools, so a reviewer never stalls on
   a permission prompt.
 - **notes**: `--permission-mode plan` makes it read-only but also prevents it
@@ -197,7 +202,7 @@ If an agent is not registered, try it anyway — the registry records what is
 known, not what is allowed:
 
 ```sh
-hc run --bg --json --name rev-<lens> --cwd "$REPO" <command> "<PACKET>"
+hc run --bg --json --name rev-<axis>-<lens> --cwd "$REPO" <command> "<PACKET>"
 ```
 
 Then check two things:

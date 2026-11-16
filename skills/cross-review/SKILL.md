@@ -77,7 +77,7 @@ sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale, 2 = 
 ```
 
 **Repair it yourself, but only when it is safe to.** The check distinguishes
-two failures, and they call for different handling:
+three failures, and they call for different handling:
 
 | The check says | Meaning | Do this |
 |---|---|---|
@@ -235,7 +235,12 @@ above has nothing on it.
 ## 3. Dispatch
 
 At **L3**: one **tab**, one **pane** per reviewer, all reviewers in parallel.
-The tab is the dashboard; the panes are the panel.
+The tab is the dashboard; the panes are the panel. **This layout is not
+per-agent safe.** An agent whose panes share one server across sessions
+(measured on opencode: panes executed each other's packets) must run one per
+tab, or at L2 — the registry records which agents that affects. Check
+`references/agents.md` before putting two reviewers of the same agent in one
+tab.
 
 At **L2**: no panes. Launch each reviewer with the print-mode command from
 `references/agents.md`, capture its report, and continue. Nothing is visible
@@ -454,6 +459,7 @@ stylistic noise rather than new defects.
 Report:
 
 ```
+panel: <transport>/<model family> per reviewer, with its pair
 REVIEW PASS — <n> accepted findings across <r> rounds, all fixed.
 Correctness PASS · Standards PASS · Spec PASS (or NOT RUN)
 ```

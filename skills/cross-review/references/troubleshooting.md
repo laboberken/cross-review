@@ -19,7 +19,8 @@ as input.
 
 **Fix.**
 
-- One directory per round: `<git-dir>/cross-review/round-<N>/<lens>.md`.
+- One directory per round:
+  `<git-dir>/cross-review/round-<N>/<axis>-<lens>.md`.
 - In the packet: *"Do not read any other file under `<ROUNDS_DIR>/` — files
   there belong to other rounds or other reviewers and are not part of your
   input."*
