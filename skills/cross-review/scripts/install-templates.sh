@@ -8,11 +8,11 @@
 #   sh scripts/install-templates.sh              # install
 #   sh scripts/install-templates.sh --dry-run    # show where it would go
 #
-# Where they go is not guessable: `hc` reads %APPDATA%\herdr-core\templates on
-# Windows and honours nothing else there (measured: XDG_CONFIG_HOME is ignored),
-# while on Unix it reads $XDG_CONFIG_HOME/herdr-core or ~/.config/herdr-core.
-# Rather than trust the guess, this script probes, copies, then reads back
-# through `hc templates` and fails if the copy is not visible.
+# Where they go is not guessable: locate-templates.sh owns the candidate
+# order (APPDATA on Windows, XDG or ~/.config on Unix), so the install
+# writes where the check will verify. This script resolves the target
+# through it, copies, then reads back through `hc templates` and fails if
+# the copy is not visible.
 #
 # POSIX sh only: this runs under dash on CI images, which has no arrays.
 
@@ -36,40 +36,9 @@ done
 here=$(cd "$(dirname "$0")" && pwd -P)
 source_dir="$here/../templates"
 
-# `hc` reads %APPDATA% on Windows, and ignores XDG_CONFIG_HOME there.
-is_windows=0
-[ -n "${APPDATA:-}" ] && is_windows=1
-
-# Candidates, in the order hc is likely to read them on this platform. A
-# Windows box keeps a stale ~/.config/herdr-core often enough that putting it
-# first would pick the wrong one.
-target=""
-if [ "$is_windows" -eq 1 ]; then
-  set -- "$APPDATA/herdr-core" "$HOME/.config/herdr-core"
-else
-  if [ -n "${XDG_CONFIG_HOME:-}" ]; then
-    set -- "$XDG_CONFIG_HOME/herdr-core" "$HOME/.config/herdr-core"
-  else
-    set -- "$HOME/.config/herdr-core"
-  fi
-fi
-
-for candidate in "$@"; do
-  echo "  probed: $candidate"
-  if [ -z "$target" ] && [ -d "$candidate" ]; then
-    target="$candidate/templates"
-  fi
-done
-
-if [ -z "$target" ]; then
-  if [ "$is_windows" -eq 1 ]; then
-    target="$APPDATA/herdr-core/templates"
-  elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
-    target="$XDG_CONFIG_HOME/herdr-core/templates"
-  else
-    target="$HOME/.config/herdr-core/templates"
-  fi
-fi
+# Where hc reads: locate-templates.sh owns the candidate order, so the
+# install writes where the check will verify (design.md D21).
+target=$(sh "$here/locate-templates.sh" --create)
 
 echo "target: $target"
 

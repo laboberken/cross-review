@@ -26,6 +26,18 @@ The axis names what counts as a standard; the lens names how the reviewer
 challenges. A reviewer is dispatched with a pair, e.g. `Skeptic@Correctness`.
 It reports both back in the header `finding-format.md` defines.
 
+## The finding format has one owner
+
+`references/finding-format.md` owns the finding format: the flagging bar,
+the header, the entry format, the `P0`–`P3` definitions, and the
+`No findings.` sentinel. The packet does not restate it. At assembly time,
+paste that file's contract section (from `## Flag a finding only when all
+of these are true` to the end) into the packet **verbatim** — the copy is
+mechanical, so the packet still stands alone and the contract cannot drift
+between owner and packet. Only the harness notes around the format (the
+header tolerated when absent, Codex's own copy) stay out: they are
+addressed to controllers, not reviewers.
+
 ## Round 1 — first review
 
 ```text
@@ -72,24 +84,11 @@ Write them to <FINDINGS_PATH>. That is the only file you may write.
 Do not read any other file under <ROUNDS_DIR>/ — files there belong to other
 rounds or other reviewers and are not part of your input.
 
-Open the file with the header from the review contract:
-
-AXIS: <AXIS NAME> | LENS: <LENS NAME>
-COVERED: <what you inspected>
-NOT COVERED: <what you did not>
-
-If your axis is spec, quote the spec line each finding checks against.
-
-Report one finding per issue, most severe first:
-
-[P1] Imperative finding title - path/to/file.py:line
-
-Follow each title with one short paragraph: the affected scenario and why the
-behaviour is wrong. Priorities: P0 release blocker, P1 urgent defect to fix
-next, P2 ordinary defect, P3 low impact but worth fixing.
-If nothing qualifies, write exactly "No findings." Do not invent a finding to
-fill the result.
-After the findings, add a brief overall assessment.
+<REPORT FORMAT — paste verbatim from references/finding-format.md, from
+`## Flag a finding only when all of these are true` to the end: the
+flagging bar, the header lines, the finding-entry format, the P0–P3
+definitions, and the `No findings.` sentinel. Copy, do not paraphrase: the
+contract has one owner, and the packet must stand alone.>
 
 DELIVERY
 Write the findings file FIRST. Only then report back with exactly this
@@ -145,16 +144,17 @@ FINDINGS
 Write them to <FINDINGS_PATH>. That is the only file you may write.
 Do not read any other file under <ROUNDS_DIR>/.
 
-Keep the header at the top of the file: `AXIS: <AXIS NAME> | LENS: <LENS NAME>`
-followed by `COVERED:` and `NOT COVERED:`.
+Keep the header at the top of the file, exactly as the report format you
+were given defines it.
 
 Format:
 
 ## Round <N-1> findings
-- [P1] <title> - FIXED / NOT FIXED / PARTIAL - <evidence>
+- [<SEVERITY>] <title> - FIXED / NOT FIXED / PARTIAL - <evidence>
 
 ## New findings
-[P1] Imperative finding title - path/to/file.py:line
+<REPORT FORMAT — the same verbatim block from references/finding-format.md
+as round 1.>
 
 If there are no new findings, write exactly "No findings." under New findings.
 
@@ -196,6 +196,7 @@ Then stop.
 
 - [ ] the intent is written, and names what is out of scope
 - [ ] the lens text is pasted in full, and the axis text with it
+- [ ] the report-format block was pasted from `finding-format.md` verbatim
 - [ ] baseline sha exists and resolves
 - [ ] the findings path is `<ROUNDS_DIR>/round-<N>/<lens>.md`, and that
       directory holds nothing from an earlier round

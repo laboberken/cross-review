@@ -73,7 +73,7 @@ it would dispatch reviewers that write findings under `.review/` and break the
 no-trace guarantee without anything noticing.
 
 ```sh
-sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale
+sh <skill-dir>/scripts/check-templates.sh    # exit 0 = current, 1 = stale, 2 = cannot run
 ```
 
 **Repair it yourself, but only when it is safe to.** The check distinguishes
@@ -141,16 +141,7 @@ Scope: the working tree, a base ref to `HEAD`, or a named ref.
 working tree and must not leave a commit behind.
 
 ```sh
-snapshot() {
-  idx=$(mktemp)
-  GIT_INDEX_FILE=$idx git read-tree HEAD
-  GIT_INDEX_FILE=$idx git add -A
-  GIT_INDEX_FILE=$idx git write-tree
-  rm -f "$idx"
-}
-
-BASE=$(git rev-parse HEAD)               # round 1 only: the ref to compare from
-SNAP=$(snapshot)                         # the working tree, immutable
+eval "$(sh <skill-dir>/scripts/snapshot-baseline.sh)"   # sets BASE and SNAP; non-zero exit on failure
 GIT_DIR=$(git rev-parse --absolute-git-dir)
 ROUNDS_DIR="$GIT_DIR/cross-review/round-1"
 mkdir -p "$ROUNDS_DIR"
@@ -433,7 +424,7 @@ into a test; round 2 caught it only by running the suite.
 
 Then:
 
-1. snapshot the working tree again (`snapshot`, as in §1) — no commit,
+1. snapshot the working tree again (`snapshot-baseline.sh`, as in §1) — no commit,
 2. compute the **delta** as `git diff "$SNAP_PREV" "$SNAP_NEW"`,
 3. dispatch the next round with only the delta in scope, in a fresh
    `$ROUNDS_DIR/round-<N+1>/` directory, naming the previous round's single
@@ -481,8 +472,9 @@ A capped review is not a passing review. Say which findings were still open.
 - Never dispatch a review against rules that contradict each other.
 - Never dispatch at L3 when `check-templates.sh` reports a stale template. The
   contract that runs the reviewer must be the contract this skill documents.
-- Never commit to pin a baseline. `git stash create -u` exists precisely so a
-  review can read history without writing any.
+- Never commit to pin a baseline, and never use `git stash create -u` for it.
+  The baseline is a tree snapshot (§1); `git stash create -u` snapshots the
+  tree as it already is, so the diff comes back empty.
 - Never write findings anywhere but under `<git-dir>/cross-review/`. Anything
   in the working tree becomes part of the next round's diff.
 - Never merge or rerank findings across axes, and never rerank lenses within
