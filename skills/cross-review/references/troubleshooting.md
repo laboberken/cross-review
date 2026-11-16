@@ -33,16 +33,13 @@ written anything, check what it has been reading before it finishes.
 **Symptom.** `hc run` returns `first_message.sent: false`, reason *"it never
 reported its status, so it may be showing a dialog"*.
 
-**Cause.** Claude Code's folder-trust dialog on a directory it has not seen.
-The reviewer sits on the dialog; nothing was sent.
+**Cause.** A startup dialog on a directory the agent has not seen — folder
+trust, measured on Claude Code and Codex. The reviewer sits on the dialog;
+nothing was sent.
 
-**Fix.**
-
-```sh
-hc read <terminal>                 # confirm it is the trust dialog
-hc keys <terminal> down            # move to "Yes, I trust this folder"
-hc keys <terminal> enter
-```
+**Fix.** Read the screen to confirm it is the dialog, then clear it the way
+`references/agents.md` records for that agent — the panel and the keys that
+clear it differ per agent.
 
 The grant persists, so re-dispatch and the task goes through:
 
@@ -240,10 +237,9 @@ empty, on a tree that clearly has changes.
 so the diff is empty. `git diff <commit>` also drops untracked files, so a
 working-tree review misses new files even when the diff is not empty.
 
-**Fix.** Snapshot through a throwaway index and diff two trees:
-`GIT_INDEX_FILE=$tmp git read-tree HEAD`, `git add -A`, `git write-tree`, then
-`git diff <base> <snapshot>` for round 1 and `git diff <snap N>` for later
-rounds. Verify the round-1 diff with `--stat` before dispatching.
+**Fix.** Snapshot through a throwaway index and diff two trees — the skill
+ships the mechanism as `scripts/snapshot-baseline.sh` (SKILL.md §1). Verify
+the round-1 diff with `--stat` before dispatching.
 
 ## The reviewer claims a finding is "pre-existing"
 

@@ -124,7 +124,11 @@ back, so the controller reads the findings file after the process exits.
   in `finding-format.md`, which is what makes the two interchangeable. That is
   also why the header is tolerated when absent: Codex's copy predates it and
   cannot be updated. It also loads the shared `herdr-core` skill and used it
-  for the handoff, unprompted.
+  for the handoff, unprompted. Measured, unprompted: *"I'm using the
+  review-agent skill for the defect-first review and herdr-core for the
+  required final handoff."* It honoured the read-only contract — *"I did not
+  inspect any review artifact contents"* — and still caught an out-of-scope
+  artifact in the diff from `git diff` alone.
 - **skills reach**: Codex does **not** read `~/.claude/skills`. It reads
   `~/.codex/skills` only, so the shared skill repository is mirrored there
   with directory junctions. Run `sync-codex-skills.ps1` after adding,

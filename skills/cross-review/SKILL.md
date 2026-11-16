@@ -285,14 +285,8 @@ hc read <terminal>          # look at the screen
 ```
 
 Read the screen before pressing anything: the dialog is not the same for every
-agent. Claude Code wants `down` then `enter`; codex shows "Folder access" with
-`1. Trust and continue` already selected, so `enter` alone clears it. Clearing
-the wrong one sends the trust grant nowhere.
-
-```sh
-hc keys <terminal> enter    # codex: the first option is preselected
-hc keys <terminal> down; hc keys <terminal> enter   # Claude Code
-```
+agent, and clearing the wrong one sends the trust grant nowhere. What each
+agent shows, and the keys that clear it: `references/agents.md`.
 
 Then re-dispatch — the trust grant persists, so the next launch delivers the
 task normally:
@@ -310,10 +304,11 @@ hc get <terminal>          # title: "Context 0% used | 0 in | 0 out"
 ```
 
 Zero tokens after a dispatch means the task is sitting in the input box
-unsubmitted — measured on codex, which pastes without pressing Enter and
-holds at `[Pasted Content N chars]`. Nothing in `hc ls` shows this: the
-terminal reads `live`, `status: working`, and the review looks like it is in
-progress. Check `hc get` after dispatching each reviewer, not `hc ls`.
+unsubmitted — some agents paste without submitting it. Nothing in `hc ls`
+shows this: the terminal reads `live`, `status: working`, and the review
+looks like it is in progress. Which agents hold a paste pending, and what
+that looks like on screen: `references/agents.md`. Check `hc get` after
+dispatching each reviewer, not `hc ls`.
 
 Never use `hc send --force` to get past a dialog. Read the screen and ask the
 user.
@@ -334,16 +329,15 @@ hc wait <address> --timeout 300
 - `blocked` — a person is needed. Read the screen and ask the user.
 
 **Not every agent reports status.** Check the registry. An agent that does not
-report one (Codex does not) cannot be detected by `hc wait` — the wait looks
+report one cannot be detected by `hc wait` — the wait looks
 for the process to exit, and an interactive TUI stays alive at its prompt
 after finishing, so the wait only ever times out. For such an agent, collect
 the review by **waiting for its report message**, not by waiting on the
 terminal.
 
 **After any `hc send` to a reviewer, look at the screen.** Some agents leave
-the pasted text pending — Codex shows `[Pasted Content N chars]` and waits for
-a separate Enter. Claude Code submits the paste itself. The behaviour is per
-agent, so check.
+the pasted text pending and wait for a separate Enter; others submit the
+paste themselves. The behaviour is per agent — the registry records which.
 
 **Do not `hc read` a reviewer that is still working.** A history read may
 scroll a full-screen TUI and restore its view, which can land as stray input

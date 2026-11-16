@@ -56,8 +56,9 @@ Two separate blockers, both on the same host:
 
 1. **Folder trust.** `first_message.sent: false`, reason *"it never reported
    its status, so it may be showing a dialog"*. The screen showed
-   `Trust this folder?`. `references/agents.md` records this dialog against
-   Claude Code only; **codex raises it too**, at least on Windows.
+   `Trust this folder?`. At the time, `references/agents.md` recorded this
+   dialog against Claude Code only; this run proved **codex raises it too**,
+   at least on Windows, and the registry now records both.
 2. **The paste was not submitted.** After trust was granted the task arrived,
    but the second reviewer's screen stayed at `[Pasted Content 6908 chars]`
    with an empty context counter. `agents.md` documents this second-Enter
